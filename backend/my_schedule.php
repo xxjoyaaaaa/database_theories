@@ -20,8 +20,6 @@ if (isset($conn)) {
 |--------------------------------------------------------------------------
 | 取得使用者
 |--------------------------------------------------------------------------
-| 正式登入完成後，應該使用 $_SESSION['user_id']
-| 目前如果登入還沒完全整合，先用 U001 測試
 */
 
 $user_id = $_SESSION['user_id'] ?? 'U001';
@@ -54,7 +52,6 @@ if ($month > 12) {
 $first_day = sprintf('%04d-%02d-01', $year, $month);
 $days_in_month = intval(date('t', strtotime($first_day)));
 $start_weekday = intval(date('w', strtotime($first_day)));
-// 0 = 星期日, 1 = 星期一, ..., 6 = 星期六
 
 $prev_year = $year;
 $prev_month = $month - 1;
@@ -75,6 +72,7 @@ if ($next_month > 12) {
 /*
 |--------------------------------------------------------------------------
 | 查詢這個使用者當月的行程
+| 如果活動時間已過，顯示狀態自動變成「已舉行」
 |--------------------------------------------------------------------------
 */
 
@@ -89,7 +87,11 @@ if ($month == 12) {
 $sql = "
     SELECT
         s.schedule_id,
-        s.status,
+
+        CASE
+            WHEN a.activity_time < NOW() THEN '已舉行'
+            ELSE s.status
+        END AS status,
 
         a.activity_id,
         a.name AS activity_name,
@@ -149,6 +151,8 @@ function getStatusClass($status) {
         return 'status-interested';
     } else if ($status === '已購票') {
         return 'status-paid';
+    } else if ($status === '已舉行') {
+        return 'status-finished';
     }
 
     return '';
@@ -291,6 +295,9 @@ function getStatusClass($status) {
             color: red;
         }
 
+        .status-finished {
+            color: gray;
+        }
 
         .legend {
             margin-top: 18px;
@@ -392,6 +399,7 @@ function getStatusClass($status) {
     <div class="legend">
         <span class="status-interested">感興趣</span>
         <span class="status-paid">已購票</span>
+        <span class="status-finished">已舉行</span>
     </div>
 </main>
 

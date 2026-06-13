@@ -51,7 +51,8 @@ if ($activity_id === '' || $status === '') {
 
 /*
 |--------------------------------------------------------------------------
-| 只允許兩種狀態
+| 只允許使用者手動設定兩種狀態
+| 已舉行是系統自動判斷，不讓使用者手動送出
 |--------------------------------------------------------------------------
 */
 
@@ -63,7 +64,7 @@ if (!in_array($status, $allowed_status)) {
 
 /*
 |--------------------------------------------------------------------------
-| 開始處理
+| 開始交易
 |--------------------------------------------------------------------------
 */
 
@@ -72,64 +73,20 @@ $db->begin_transaction();
 try {
     /*
     |--------------------------------------------------------------------------
-    | 1. 新增或更新 SCHEDULE
+    | 1. 查詢活動時間，以及使用者目前是否已有這筆行程
     |--------------------------------------------------------------------------
-    | 如果同一個 user_id + activity_id 已經存在，
-    | 就只更新 status。
-    */
-
-    $schedule_id = 'S' . date('YmdHis') . mt_rand(100, 999);
-
-    $sql = "
-        INSERT INTO SCHEDULE (
-            schedule_id,
-            user_id,
-            activity_id,
-            status,
-            created_at
-        )
-        VALUES (?, ?, ?, ?, NOW())
-        ON DUPLICATE KEY UPDATE
-            status = VALUES(status)
-    ";
-
-    $stmt = $db->prepare($sql);
-
-    if (!$stmt) {
-        throw new Exception('SQL prepare 失敗：' . $db->error);
-    }
-
-    $stmt->bind_param(
-        "ssss",
-        $schedule_id,
-        $user_id,
-        $activity_id,
-        $status
-    );
-
-    if (!$stmt->execute()) {
-        throw new Exception('SQL execute 失敗：' . $stmt->error);
-    }
-
-    $stmt->close();
-
-    /*
-    |--------------------------------------------------------------------------
-    | 2. 查出真正的 schedule_id 和活動時間
-    |--------------------------------------------------------------------------
-    | 因為如果是 ON DUPLICATE KEY UPDATE，
-    | 剛剛產生的新 schedule_id 不一定有被使用。
     */
 
     $sql = "
         SELECT
             s.schedule_id,
+            s.status,
             a.activity_time
-        FROM SCHEDULE s
-        JOIN ACTIVITY a
-            ON s.activity_id = a.activity_id
-        WHERE s.user_id = ?
-          AND s.activity_id = ?
+        FROM ACTIVITY a
+        LEFT JOIN SCHEDULE s
+            ON a.activity_id = s.activity_id
+           AND s.user_id = ?
+        WHERE a.activity_id = ?
         LIMIT 1
     ";
 
@@ -145,17 +102,156 @@ try {
         throw new Exception('SQL execute 失敗：' . $stmt->error);
     }
 
-    $stmt->bind_result($real_schedule_id, $activity_time);
+    $stmt->bind_result($current_schedule_id, $current_status, $activity_time);
 
     if (!$stmt->fetch()) {
-        throw new Exception('找不到對應的行程資料');
+        throw new Exception('找不到此活動');
     }
 
     $stmt->close();
 
     /*
     |--------------------------------------------------------------------------
-    | 3. 自動計算提醒時間：活動前一天中午 12:00
+    | 2. 如果活動時間已過，不能再新增、取消、修改狀態
+    |--------------------------------------------------------------------------
+    */
+
+    if (strtotime($activity_time) < time()) {
+        throw new Exception('活動已舉行，不能再更改狀態');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 3. 如果目前狀態和按下的狀態一樣，代表使用者要取消
+    |    例如：已經是感興趣，又按一次感興趣
+    |--------------------------------------------------------------------------
+    */
+
+    if ($current_schedule_id !== null && $current_status === $status) {
+        /*
+        先刪除提醒
+        */
+        $sql = "
+            DELETE FROM REMINDER
+            WHERE schedule_id = ?
+        ";
+
+        $stmt = $db->prepare($sql);
+
+        if (!$stmt) {
+            throw new Exception('SQL prepare 失敗：' . $db->error);
+        }
+
+        $stmt->bind_param("s", $current_schedule_id);
+
+        if (!$stmt->execute()) {
+            throw new Exception('SQL execute 失敗：' . $stmt->error);
+        }
+
+        $stmt->close();
+
+        /*
+        再刪除行程
+        */
+        $sql = "
+            DELETE FROM SCHEDULE
+            WHERE schedule_id = ?
+              AND user_id = ?
+        ";
+
+        $stmt = $db->prepare($sql);
+
+        if (!$stmt) {
+            throw new Exception('SQL prepare 失敗：' . $db->error);
+        }
+
+        $stmt->bind_param("ss", $current_schedule_id, $user_id);
+
+        if (!$stmt->execute()) {
+            throw new Exception('SQL execute 失敗：' . $stmt->error);
+        }
+
+        $stmt->close();
+
+        $db->commit();
+
+        header("Location: ../pages/activity_detail.php?id=" . urlencode($activity_id));
+        exit;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 4. 如果沒有行程就新增；如果已有行程但狀態不同就更新
+    |--------------------------------------------------------------------------
+    */
+
+    if ($current_schedule_id === null) {
+        $real_schedule_id = 'S' . date('YmdHis') . mt_rand(100, 999);
+
+        $sql = "
+            INSERT INTO SCHEDULE (
+                schedule_id,
+                user_id,
+                activity_id,
+                status,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, NOW())
+        ";
+
+        $stmt = $db->prepare($sql);
+
+        if (!$stmt) {
+            throw new Exception('SQL prepare 失敗：' . $db->error);
+        }
+
+        $stmt->bind_param(
+            "ssss",
+            $real_schedule_id,
+            $user_id,
+            $activity_id,
+            $status
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception('SQL execute 失敗：' . $stmt->error);
+        }
+
+        $stmt->close();
+
+    } else {
+        $real_schedule_id = $current_schedule_id;
+
+        $sql = "
+            UPDATE SCHEDULE
+            SET status = ?
+            WHERE schedule_id = ?
+              AND user_id = ?
+        ";
+
+        $stmt = $db->prepare($sql);
+
+        if (!$stmt) {
+            throw new Exception('SQL prepare 失敗：' . $db->error);
+        }
+
+        $stmt->bind_param(
+            "sss",
+            $status,
+            $real_schedule_id,
+            $user_id
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception('SQL execute 失敗：' . $stmt->error);
+        }
+
+        $stmt->close();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 5. 自動設定提醒時間：活動前一天中午 12:00
     |--------------------------------------------------------------------------
     */
 
@@ -167,7 +263,7 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | 4. 避免重複提醒：先刪掉這筆行程原本的提醒
+    | 6. 避免重複提醒，先刪除原本提醒
     |--------------------------------------------------------------------------
     */
 
@@ -192,7 +288,7 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | 5. 新增自動提醒
+    | 7. 新增自動提醒
     |--------------------------------------------------------------------------
     */
 
