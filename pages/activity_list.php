@@ -228,7 +228,6 @@ require_once '../backend/get_activities.php';
             <?php if (!empty($activities)): ?>
                 <?php foreach ($activities as $row): ?>
                     <?php
-                    // 套用更新後的 activity_time 欄位
                     $activity_date = date('Y/m/d', strtotime($row["activity_time"]));
                     $activity_id = $row["activity_id"];
                     ?>
