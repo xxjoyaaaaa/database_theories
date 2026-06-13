@@ -1,16 +1,16 @@
 <?php
-$servername = "140.122.184.121";
-$username = "team10";
-$password = "2\$wyyN@mC9Vu";
-$dbname = "root";
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+$host = "127.0.0.1";
+$user = "root";
+$password = ""; // 你的 MySQL 密碼
+$database = "team10_activity_planner";
+
+$conn = new mysqli($host, $user, $password, $database);
 
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die("資料庫連線失敗: " . $conn->connect_error);
 }
 
-if (!$conn->set_charset("utf8")) {
-    die("Error loading character set utf8: " . $conn->error);
-}
+$conn->set_charset("utf8mb4");
+
 ?>
