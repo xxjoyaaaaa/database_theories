@@ -6,7 +6,6 @@ require_once 'db.php';
 |--------------------------------------------------------------------------
 | 取得資料庫連線
 |--------------------------------------------------------------------------
-| 這裡支援 db.php 裡面連線變數叫 $conn 或 $mysqli
 */
 
 if (isset($conn)) {
@@ -31,8 +30,6 @@ $user_id = $_SESSION['user_id'] ?? 'U001';
 |--------------------------------------------------------------------------
 | 取得年份與月份
 |--------------------------------------------------------------------------
-| 網址範例：
-| my_schedule.php?year=2026&month=7
 */
 
 $year = isset($_GET['year']) ? intval($_GET['year']) : intval(date('Y'));
@@ -50,13 +47,13 @@ if ($month > 12) {
 
 /*
 |--------------------------------------------------------------------------
-| 計算月曆需要的資訊
+| 計算月曆資訊
 |--------------------------------------------------------------------------
 */
 
 $first_day = sprintf('%04d-%02d-01', $year, $month);
 $days_in_month = intval(date('t', strtotime($first_day)));
-$start_weekday = intval(date('w', strtotime($first_day))); 
+$start_weekday = intval(date('w', strtotime($first_day)));
 // 0 = 星期日, 1 = 星期一, ..., 6 = 星期六
 
 $prev_year = $year;
@@ -79,11 +76,6 @@ if ($next_month > 12) {
 |--------------------------------------------------------------------------
 | 查詢這個使用者當月的行程
 |--------------------------------------------------------------------------
-| 注意：
-| 行事曆只查詢與顯示資料
-| 不在這裡刪除
-| 不在這裡更新狀態
-| 狀態更新留在 activity_detail.php
 */
 
 $start_date = sprintf('%04d-%02d-01 00:00:00', $year, $month);
@@ -157,10 +149,6 @@ function getStatusClass($status) {
         return 'status-interested';
     } else if ($status === '已購票') {
         return 'status-paid';
-    } else if ($status === '預定參加') {
-        return 'status-planned';
-    } else if ($status === '已舉行') {
-        return 'status-finished';
     }
 
     return '';
@@ -174,46 +162,45 @@ function getStatusClass($status) {
     <title>行事曆</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: Arial, "Microsoft JhengHei", sans-serif;
             background-color: #ffffff;
-        }
-
-        .url-bar {
-            width: 32%;
-            height: 24px;
-            border: 2px solid #bfbfbf;
-            border-radius: 20px;
-            margin: 18px auto 0 auto;
-            text-align: center;
-            line-height: 24px;
-            font-size: 14px;
             color: #333;
         }
 
         .top-bar {
-            width: 90%;
-            margin: 8px auto 0 auto;
+            width: 100%;
+            height: 72px;
             background-color: #d9d9d9;
-            border-top: 2px solid #999;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 18px;
-            box-sizing: border-box;
+            padding: 0 32px;
+            border-bottom: 1px solid #c8c8c8;
         }
 
         .system-title {
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 24px;
+            font-weight: 500;
+            color: #222;
+        }
+
+        .top-nav {
+            display: flex;
+            gap: 28px;
+            align-items: center;
         }
 
         .top-nav a {
-            color: black;
+            color: #222;
             text-decoration: none;
-            margin-left: 20px;
-            font-size: 15px;
+            font-size: 20px;
+            font-weight: 500;
         }
 
         .top-nav a:hover {
@@ -222,30 +209,33 @@ function getStatusClass($status) {
 
         .calendar-wrapper {
             width: 82%;
-            margin: 25px auto;
+            margin: 42px auto 0 auto;
         }
 
         .calendar-wrapper h2 {
-            margin: 0 0 15px 0;
-            font-size: 22px;
+            margin: 0 0 22px 0;
+            font-size: 28px;
+            font-weight: bold;
+            color: #111;
         }
 
         .month-control {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 35px;
-            margin-bottom: 15px;
-            font-size: 16px;
+            gap: 42px;
+            margin-bottom: 20px;
+            font-size: 20px;
         }
 
         .month-control a {
-            color: black;
+            color: #111;
             text-decoration: none;
             border: 1px solid #999;
-            padding: 5px 12px;
-            border-radius: 5px;
-            background-color: #f2f2f2;
+            padding: 8px 18px;
+            border-radius: 6px;
+            background-color: #f0f0f0;
+            font-size: 18px;
         }
 
         .month-control a:hover {
@@ -256,33 +246,36 @@ function getStatusClass($status) {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            background-color: #ffffff;
         }
 
         .calendar-table th {
             border: 2px solid #333;
-            height: 35px;
+            height: 42px;
             background-color: #eeeeee;
             font-weight: normal;
+            font-size: 18px;
         }
 
         .calendar-table td {
             border: 2px solid #333;
-            height: 95px;
+            height: 110px;
             vertical-align: top;
-            padding: 5px;
-            box-sizing: border-box;
+            padding: 6px;
+            font-size: 16px;
         }
 
         .date-number {
-            font-size: 14px;
-            margin-bottom: 4px;
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #111;
         }
 
         .event-link {
             display: block;
-            font-size: 13px;
+            font-size: 16px;
             text-decoration: none;
-            margin-top: 2px;
+            margin-top: 3px;
             word-break: break-all;
         }
 
@@ -298,21 +291,15 @@ function getStatusClass($status) {
             color: red;
         }
 
-        .status-planned {
-            color: orange;
-        }
-
-        .status-finished {
-            color: gray;
-        }
 
         .legend {
-            margin-top: 15px;
-            font-size: 14px;
+            margin-top: 18px;
+            font-size: 16px;
         }
 
         .legend span {
-            margin-right: 20px;
+            margin-right: 24px;
+            font-weight: 500;
         }
 
         .empty-cell {
@@ -323,13 +310,11 @@ function getStatusClass($status) {
 
 <body>
 
-<div class="url-bar">網址</div>
-
 <header class="top-bar">
     <div class="system-title">活動導購與行程紀錄系統</div>
 
     <nav class="top-nav">
-        <a href="../index.php">首頁</a>
+        <a href="../pages/activity_list.php">首頁</a>
         <a href="my_schedule.php">行事曆</a>
         <a href="../pages/profile.php">使用者</a>
     </nav>
@@ -407,8 +392,6 @@ function getStatusClass($status) {
     <div class="legend">
         <span class="status-interested">感興趣</span>
         <span class="status-paid">已購票</span>
-        <span class="status-planned">預定參加</span>
-        <span class="status-finished">已舉行</span>
     </div>
 </main>
 

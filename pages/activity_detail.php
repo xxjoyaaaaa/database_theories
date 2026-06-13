@@ -55,8 +55,6 @@ if ($current_status === "感興趣") {
     $status_color = "blue";
 } else if ($current_status === "已購票") {
     $status_color = "red";
-} else if ($current_status === "預定參加") {
-    $status_color = "orange";
 } else if ($current_status === "已舉行") {
     $status_color = "gray";
 }
@@ -288,16 +286,6 @@ if ($current_status === "感興趣") {
                 </button>
             </form>
 
-            <!-- 預定參加 -->
-            <form action="../backend/add_schedule.php" method="post">
-                <input type="hidden" name="action" value="update_status">
-                <input type="hidden" name="activity_id" value="<?= htmlspecialchars($activity_id) ?>">
-                <input type="hidden" name="status" value="預定參加">
-
-                <button type="submit" class="btn">
-                    預定參加
-                </button>
-            </form>
 
             <!-- 已購票 -->
             <form action="../backend/add_schedule.php" method="post">
@@ -327,42 +315,7 @@ if ($current_status === "感興趣") {
 
     </div>
 
-    <!-- 提醒功能 -->
-    <div class="reminder-box">
-        <h3>設定提醒</h3>
-
-        <?php if ($current_status): ?>
-
-            <form action="../backend/add_schedule.php" method="post">
-                <input type="hidden" name="action" value="add_reminder">
-                <input type="hidden" name="activity_id" value="<?= htmlspecialchars($activity_id) ?>">
-
-                <label>提醒時間</label>
-                <input type="datetime-local" name="reminder_time" required>
-
-                <label>提醒方式</label>
-                <select name="notify_method">
-                    <option value="email">Email</option>
-                    <option value="push">Push</option>
-                </select>
-
-                <button type="submit" class="btn">
-                    新增提醒
-                </button>
-            </form>
-
-            <p class="notice">
-                提醒時間必須早於活動開始時間。
-            </p>
-
-        <?php else: ?>
-
-            <p class="notice">
-                請先將此活動加入行事曆，才能設定提醒。
-            </p>
-
-        <?php endif; ?>
-    </div>
+    
 
 </main>
 

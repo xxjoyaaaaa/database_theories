@@ -38,52 +38,46 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 /*
 |--------------------------------------------------------------------------
-| 判斷這次要做什麼
+| 接收資料
 |--------------------------------------------------------------------------
-| update_status：新增行程 / 更新狀態
-| add_reminder：新增提醒
-|
-| 如果舊表單沒有傳 action，但有傳 status，就預設為 update_status
 */
 
-$action = $_POST['action'] ?? '';
+$activity_id = $_POST['activity_id'] ?? '';
+$status = $_POST['status'] ?? '';
 
-if ($action === '' && isset($_POST['status'])) {
-    $action = 'update_status';
-}
-
-if ($action === '') {
-    die('錯誤：缺少 action');
+if ($activity_id === '' || $status === '') {
+    die('錯誤：缺少 activity_id 或 status');
 }
 
 /*
 |--------------------------------------------------------------------------
-| 功能一：新增行程 / 更新行程狀態
-|--------------------------------------------------------------------------
-| 使用位置：pages/activity_detail.php
-| 使用者按「感興趣 / 預定參加 / 已購票」
+| 只允許兩種狀態
 |--------------------------------------------------------------------------
 */
 
-if ($action === 'update_status') {
-    $activity_id = $_POST['activity_id'] ?? '';
-    $status = $_POST['status'] ?? '';
+$allowed_status = ['感興趣', '已購票'];
 
-    if ($activity_id === '' || $status === '') {
-        die('錯誤：缺少 activity_id 或 status');
-    }
+if (!in_array($status, $allowed_status)) {
+    die('錯誤：不合法的行程狀態');
+}
 
-    $allowed_status = ['感興趣', '預定參加', '已購票'];
+/*
+|--------------------------------------------------------------------------
+| 開始處理
+|--------------------------------------------------------------------------
+*/
 
-    if (!in_array($status, $allowed_status)) {
-        die('錯誤：不合法的行程狀態');
-    }
+$db->begin_transaction();
 
+try {
     /*
-    產生新的 schedule_id。
-    如果同一個 user_id + activity_id 已存在，
-    會觸發 UNIQUE(user_id, activity_id)，然後改成更新 status。
+    |--------------------------------------------------------------------------
+    | 1. 新增或更新 SCHEDULE
+    |--------------------------------------------------------------------------
+    | 如果同一個 user_id + activity_id 已經存在，
+    | 就只更新 status。
     */
+
     $schedule_id = 'S' . date('YmdHis') . mt_rand(100, 999);
 
     $sql = "
@@ -102,7 +96,7 @@ if ($action === 'update_status') {
     $stmt = $db->prepare($sql);
 
     if (!$stmt) {
-        die('SQL prepare 失敗：' . $db->error);
+        throw new Exception('SQL prepare 失敗：' . $db->error);
     }
 
     $stmt->bind_param(
@@ -114,59 +108,19 @@ if ($action === 'update_status') {
     );
 
     if (!$stmt->execute()) {
-        die('SQL execute 失敗：' . $stmt->error);
+        throw new Exception('SQL execute 失敗：' . $stmt->error);
     }
 
     $stmt->close();
 
-    header("Location: ../pages/activity_detail.php?id=" . urlencode($activity_id));
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
-| 功能二：新增提醒
-|--------------------------------------------------------------------------
-| 使用位置：pages/activity_detail.php
-| 使用者必須先把活動加入行事曆，才能設定提醒
-|--------------------------------------------------------------------------
-*/
-
-if ($action === 'add_reminder') {
-    $activity_id = $_POST['activity_id'] ?? '';
-    $reminder_time = $_POST['reminder_time'] ?? '';
-    $notify_method = $_POST['notify_method'] ?? 'email';
-
-    if ($activity_id === '' || $reminder_time === '') {
-        die('錯誤：缺少 activity_id 或 reminder_time');
-    }
-
-    $allowed_methods = ['email', 'push'];
-
-    if (!in_array($notify_method, $allowed_methods)) {
-        die('錯誤：不合法的提醒方式');
-    }
-
     /*
-    datetime-local 傳來通常是 2026-07-19T10:00
-    MySQL DATETIME 要改成 2026-07-19 10:00:00
+    |--------------------------------------------------------------------------
+    | 2. 查出真正的 schedule_id 和活動時間
+    |--------------------------------------------------------------------------
+    | 因為如果是 ON DUPLICATE KEY UPDATE，
+    | 剛剛產生的新 schedule_id 不一定有被使用。
     */
-    $reminder_time = str_replace('T', ' ', $reminder_time);
 
-    if (strlen($reminder_time) === 16) {
-        $reminder_time .= ':00';
-    }
-
-    $reminder_timestamp = strtotime($reminder_time);
-
-    if ($reminder_timestamp === false) {
-        die('錯誤：提醒時間格式不正確');
-    }
-
-    /*
-    先找出這個使用者對這個活動的 schedule_id。
-    REMINDER 是連到 SCHEDULE，不是直接連到 ACTIVITY。
-    */
     $sql = "
         SELECT
             s.schedule_id,
@@ -182,37 +136,68 @@ if ($action === 'add_reminder') {
     $stmt = $db->prepare($sql);
 
     if (!$stmt) {
-        die('SQL prepare 失敗：' . $db->error);
+        throw new Exception('SQL prepare 失敗：' . $db->error);
     }
 
     $stmt->bind_param("ss", $user_id, $activity_id);
 
     if (!$stmt->execute()) {
-        die('SQL execute 失敗：' . $stmt->error);
+        throw new Exception('SQL execute 失敗：' . $stmt->error);
     }
 
-    $stmt->bind_result($schedule_id, $activity_time);
+    $stmt->bind_result($real_schedule_id, $activity_time);
 
     if (!$stmt->fetch()) {
-        $stmt->close();
-        die('錯誤：請先將此活動加入行事曆，才能設定提醒');
+        throw new Exception('找不到對應的行程資料');
     }
 
     $stmt->close();
 
     /*
-    提醒時間必須早於活動開始時間
+    |--------------------------------------------------------------------------
+    | 3. 自動計算提醒時間：活動前一天中午 12:00
+    |--------------------------------------------------------------------------
     */
-    $activity_timestamp = strtotime($activity_time);
 
-    if ($reminder_timestamp >= $activity_timestamp) {
-        die('錯誤：提醒時間必須早於活動開始時間');
-    }
+    $activity_datetime = new DateTime($activity_time);
+    $activity_datetime->modify('-1 day');
+    $activity_datetime->setTime(12, 0, 0);
+
+    $reminder_time = $activity_datetime->format('Y-m-d H:i:s');
 
     /*
-    新增提醒
+    |--------------------------------------------------------------------------
+    | 4. 避免重複提醒：先刪掉這筆行程原本的提醒
+    |--------------------------------------------------------------------------
     */
+
+    $sql = "
+        DELETE FROM REMINDER
+        WHERE schedule_id = ?
+    ";
+
+    $stmt = $db->prepare($sql);
+
+    if (!$stmt) {
+        throw new Exception('SQL prepare 失敗：' . $db->error);
+    }
+
+    $stmt->bind_param("s", $real_schedule_id);
+
+    if (!$stmt->execute()) {
+        throw new Exception('SQL execute 失敗：' . $stmt->error);
+    }
+
+    $stmt->close();
+
+    /*
+    |--------------------------------------------------------------------------
+    | 5. 新增自動提醒
+    |--------------------------------------------------------------------------
+    */
+
     $reminder_id = 'R' . date('YmdHis') . mt_rand(100, 999);
+    $notify_method = 'email';
 
     $sql = "
         INSERT INTO REMINDER (
@@ -228,32 +213,30 @@ if ($action === 'add_reminder') {
     $stmt = $db->prepare($sql);
 
     if (!$stmt) {
-        die('SQL prepare 失敗：' . $db->error);
+        throw new Exception('SQL prepare 失敗：' . $db->error);
     }
 
     $stmt->bind_param(
         "ssss",
         $reminder_id,
-        $schedule_id,
+        $real_schedule_id,
         $reminder_time,
         $notify_method
     );
 
     if (!$stmt->execute()) {
-        die('SQL execute 失敗：' . $stmt->error);
+        throw new Exception('SQL execute 失敗：' . $stmt->error);
     }
 
     $stmt->close();
 
+    $db->commit();
+
     header("Location: ../pages/activity_detail.php?id=" . urlencode($activity_id));
     exit;
+
+} catch (Exception $e) {
+    $db->rollback();
+    die('錯誤：' . $e->getMessage());
 }
-
-/*
-|--------------------------------------------------------------------------
-| 如果 action 不是上面兩種
-|--------------------------------------------------------------------------
-*/
-
-die('錯誤：未知的 action');
 ?>
