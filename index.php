@@ -182,7 +182,7 @@ if (!isset($_SESSION["user_id"])) {
         <h1>活動導購與行程紀錄系統</h1>
         <div class="nav-links">
             <a href="#">行事曆</a>
-            <a href="#">使用者</a>
+            <a href="pages/profile.php">使用者</a>
             <a href="backend/logout.php">登出</a>
         </div>
     </nav>
