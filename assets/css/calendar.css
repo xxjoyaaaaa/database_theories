@@ -1,0 +1,107 @@
+body {
+    margin: 0;
+    font-family: Arial, "Microsoft JhengHei", sans-serif;
+    background-color: white;
+}
+
+.top-bar {
+    width: 90%;
+    margin: 20px auto 0 auto;
+    padding: 14px 20px;
+    background-color: #d9d9d9;
+    border-top: 2px solid #888;
+    display: flex;
+    justify-content: space-between;
+    box-sizing: border-box;
+}
+
+.system-title {
+    font-weight: bold;
+}
+
+.top-bar a {
+    margin-left: 20px;
+    color: black;
+    text-decoration: none;
+}
+
+.calendar-wrapper {
+    width: 80%;
+    margin: 25px auto;
+}
+
+.calendar-wrapper h2 {
+    margin-bottom: 15px;
+}
+
+.month-control {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 15px;
+}
+
+.month-control a {
+    color: black;
+    text-decoration: none;
+}
+
+.calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.calendar-table th {
+    border: 2px solid #333;
+    height: 35px;
+    background-color: #eeeeee;
+}
+
+.calendar-table td {
+    border: 2px solid #333;
+    height: 90px;
+    vertical-align: top;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+.date-number {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.event-area {
+    margin-top: 3px;
+}
+
+.event-link {
+    display: block;
+    font-size: 13px;
+    text-decoration: none;
+    margin-bottom: 2px;
+}
+
+.status-interested {
+    color: blue;
+}
+
+.status-paid {
+    color: red;
+}
+
+.status-planned {
+    color: orange;
+}
+
+.status-finished {
+    color: gray;
+}
+
+.legend {
+    margin-top: 15px;
+}
+
+.legend span {
+    margin-right: 20px;
+}
