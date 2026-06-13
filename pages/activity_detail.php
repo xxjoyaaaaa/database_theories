@@ -398,7 +398,7 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
             <p class="notice">
                 此活動已舉行，不再建立提醒。
             </p>
-        <?php else if ($current_status): ?>
+        <?php elseif ($current_status): ?>
             <p class="notice">
                 系統已自動設定提醒時間：<?= htmlspecialchars($auto_reminder_time) ?>。
             </p>
