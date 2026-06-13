@@ -1,5 +1,9 @@
 <?php
-// 在最上方引入後端處理邏輯，抓取 $activities 陣列
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once '../backend/get_activities.php';
 ?>
 <!DOCTYPE html>
