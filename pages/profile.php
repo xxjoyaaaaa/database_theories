@@ -19,15 +19,22 @@ $user_id = $_SESSION["user_id"];
 $user_name = $_SESSION["name"] ?? "使用者";
 
 $tab = $_GET["tab"] ?? "reminder";
+$message = "";
 
 /*
 |--------------------------------------------------------------------------
-| 處理標記已提醒
+| 處理 POST
 |--------------------------------------------------------------------------
 */
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $action = $_POST["action"] ?? "";
+
+    /*
+    |--------------------------------------------------------------------------
+    | 標記已提醒
+    |--------------------------------------------------------------------------
+    */
 
     if ($action === "mark_sent") {
         $reminder_id = $_POST["reminder_id"] ?? "";
@@ -60,7 +67,79 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         header("Location: profile.php?tab=reminder");
         exit;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 修改使用者名稱
+    |--------------------------------------------------------------------------
+    */
+
+    if ($action === "update_profile") {
+        $new_name = trim($_POST["name"] ?? "");
+
+        if ($new_name === "") {
+            $message = "使用者名稱不能為空";
+            $tab = "info";
+        } else {
+            $sql = "
+                UPDATE USERS
+                SET name = ?
+                WHERE user_id = ?
+            ";
+
+            $stmt = $db->prepare($sql);
+
+            if (!$stmt) {
+                die("SQL prepare 失敗：" . $db->error);
+            }
+
+            $stmt->bind_param("ss", $new_name, $user_id);
+
+            if (!$stmt->execute()) {
+                die("SQL execute 失敗：" . $stmt->error);
+            }
+
+            $stmt->close();
+
+            $_SESSION["name"] = $new_name;
+
+            header("Location: profile.php?tab=info&updated=1");
+            exit;
+        }
+    }
 }
+
+/*
+|--------------------------------------------------------------------------
+| 查詢使用者個人資料
+|--------------------------------------------------------------------------
+*/
+
+$user_info_name = "";
+$user_info_email = "";
+
+$sql = "
+    SELECT name, email
+    FROM USERS
+    WHERE user_id = ?
+    LIMIT 1
+";
+
+$stmt = $db->prepare($sql);
+
+if (!$stmt) {
+    die("SQL prepare 失敗：" . $db->error);
+}
+
+$stmt->bind_param("s", $user_id);
+
+if (!$stmt->execute()) {
+    die("SQL execute 失敗：" . $stmt->error);
+}
+
+$stmt->bind_result($user_info_name, $user_info_email);
+$stmt->fetch();
+$stmt->close();
 
 /*
 |--------------------------------------------------------------------------
@@ -114,6 +193,12 @@ while ($row = $result->fetch_assoc()) {
 }
 
 $stmt->close();
+
+/*
+|--------------------------------------------------------------------------
+| 函式
+|--------------------------------------------------------------------------
+*/
 
 function getReminderText($reminder) {
     if ($reminder["is_sent"]) {
@@ -185,6 +270,10 @@ function getScheduleStatusClass($status) {
             color: black;
             font-size: 24px;
             font-weight: 500;
+        }
+
+        .top-nav a:hover {
+            text-decoration: underline;
         }
 
         .page {
@@ -349,35 +438,43 @@ function getScheduleStatusClass($status) {
             cursor: pointer;
         }
 
+        .mark-btn:hover {
+            background-color: #777;
+        }
+
         .empty-message {
             font-size: 24px;
             color: #555;
             padding: 30px;
         }
 
-        .password-area {
+        .password-area,
+        .profile-area {
             height: 100%;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        .password-form {
+        .password-form,
+        .profile-form {
             display: grid;
-            grid-template-columns: 130px 230px;
-            row-gap: 14px;
+            grid-template-columns: 140px 260px;
+            row-gap: 16px;
             column-gap: 22px;
             align-items: center;
         }
 
-        .password-form label {
+        .password-form label,
+        .profile-form label {
             text-align: right;
             font-size: 24px;
         }
 
-        .password-form input {
-            width: 230px;
-            height: 36px;
+        .password-form input,
+        .profile-form input {
+            width: 260px;
+            height: 38px;
             border: none;
             border-radius: 18px;
             padding: 0 15px;
@@ -385,10 +482,16 @@ function getScheduleStatusClass($status) {
             background-color: white;
         }
 
-        .password-form button {
+        .profile-form input[readonly] {
+            background-color: #eeeeee;
+            color: #666;
+        }
+
+        .password-form button,
+        .profile-form button {
             grid-column: 2;
             margin-top: 12px;
-            width: 120px;
+            width: 130px;
             padding: 8px 0;
             border: none;
             border-radius: 18px;
@@ -399,8 +502,20 @@ function getScheduleStatusClass($status) {
         }
 
         .password-form button:hover,
-        .mark-btn:hover {
+        .profile-form button:hover {
             background-color: #777;
+        }
+
+        .success-message {
+            grid-column: 2;
+            color: green;
+            font-size: 15px;
+        }
+
+        .error-message {
+            grid-column: 2;
+            color: red;
+            font-size: 15px;
         }
     </style>
 </head>
@@ -423,6 +538,7 @@ function getScheduleStatusClass($status) {
 
         <nav class="side-menu">
             <a href="profile.php?tab=reminder" class="<?= $tab === 'reminder' ? 'active' : '' ?>">提醒</a>
+            <a href="profile.php?tab=info" class="<?= $tab === 'info' ? 'active' : '' ?>">個人資料</a>
             <a href="profile.php?tab=password" class="<?= $tab === 'password' ? 'active' : '' ?>">修改密碼</a>
             <a href="../backend/logout.php">登出</a>
         </nav>
@@ -444,6 +560,41 @@ function getScheduleStatusClass($status) {
                     <input type="password" name="confirm_password" required>
 
                     <button type="submit">確認修改</button>
+                </form>
+            </div>
+
+        <?php elseif ($tab === "info"): ?>
+
+            <div class="profile-area">
+                <form class="profile-form" action="profile.php?tab=info" method="post">
+                    <input type="hidden" name="action" value="update_profile">
+
+                    <label>使用者名稱</label>
+                    <input
+                        type="text"
+                        name="name"
+                        value="<?= htmlspecialchars($user_info_name) ?>"
+                        required
+                    >
+
+                    <label>Email</label>
+                    <input
+                        type="email"
+                        value="<?= htmlspecialchars($user_info_email) ?>"
+                        readonly
+                    >
+
+                    <?php if (isset($_GET["updated"])): ?>
+                        <div class="success-message">個人資料已更新</div>
+                    <?php endif; ?>
+
+                    <?php if ($message !== ""): ?>
+                        <div class="error-message">
+                            <?= htmlspecialchars($message) ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <button type="submit">儲存修改</button>
                 </form>
             </div>
 
