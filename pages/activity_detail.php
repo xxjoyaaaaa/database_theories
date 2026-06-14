@@ -142,12 +142,18 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
     <section class="grid lg:grid-cols-3 gap-8">
 
         <div class="lg:col-span-2">
-            <div class="h-72 md:h-96 rounded-[2rem] bg-gradient-to-br from-indigo-100 via-blue-100 to-slate-200 flex items-center justify-center shadow-sm border border-white">
+            <?php if (!empty($activity['image_url'])): ?>
+                <img src="<?= htmlspecialchars($activity['image_url']) ?>" 
+                 alt="<?= htmlspecialchars($activity['name']) ?>" 
+                 class="w-full h-72 md:h-96 object-cover rounded-[2rem] shadow-sm border border-white">
+            <?php else: ?>
+                <div class="h-72 md:h-96 rounded-[2rem] bg-gradient-to-br from-indigo-100 via-blue-100 to-slate-200 flex items-center justify-center shadow-sm border border-white">
                 <div class="text-center">
-                    <div class="text-6xl mb-4">🎫</div>
-                    <p class="text-slate-500 font-medium">活動照片</p>
+                <div class="text-6xl mb-4">🎫</div>
+                <p class="text-slate-500 font-medium">暫無活動照片</p>
                 </div>
-            </div>
+                </div>
+            <?php endif; ?>
 
             <div class="mt-8 rounded-[2rem] bg-white border border-slate-200 shadow-sm p-7 md:p-8">
                 <div class="flex flex-wrap items-center gap-3 mb-5">
