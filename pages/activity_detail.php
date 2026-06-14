@@ -196,6 +196,16 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
             margin-bottom: 30px;
         }
 
+        .activity-image {
+            width: 100%;
+            height: 350px;
+            object-fit: cover; /* 這個屬性超重要！它會像裁切一樣，讓圖片填滿區塊但不會變形 */
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: block;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* 加一點淡淡的陰影讓圖片更有質感 */
+        }
+
         .content-section {
             display: flex;
             justify-content: space-between;
@@ -311,9 +321,13 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
 
 <main class="main-container">
 
+    <?php if (!empty($activity['image_url'])): ?>
+    <img src="<?= htmlspecialchars($activity['image_url']) ?>" alt="<?= htmlspecialchars($activity['name']) ?>" class="activity-image">
+<?php else: ?>
     <div class="image-placeholder">
-        活動照片
+        暫無活動照片
     </div>
+<?php endif; ?>
 
     <div class="content-section">
 
