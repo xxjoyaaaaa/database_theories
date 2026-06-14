@@ -18,6 +18,8 @@ if (isset($conn)) {
 $user_id = $_SESSION["user_id"];
 $user_name = $_SESSION["name"] ?? "使用者";
 
+$tab = $_GET["tab"] ?? "reminder";
+
 /*
 |--------------------------------------------------------------------------
 | 處理標記已提醒
@@ -55,7 +57,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt->close();
         }
 
-        header("Location: profile.php");
+        header("Location: profile.php?tab=reminder");
         exit;
     }
 }
@@ -72,8 +74,6 @@ $sql = "
         r.reminder_time,
         r.notify_method,
         r.is_sent,
-
-        s.schedule_id,
 
         CASE
             WHEN a.activity_time < NOW() THEN '已舉行'
@@ -115,28 +115,16 @@ while ($row = $result->fetch_assoc()) {
 
 $stmt->close();
 
-function getReminderStatusText($reminder_time, $is_sent) {
-    if ($is_sent) {
-        return "已提醒";
+function getReminderText($reminder) {
+    if ($reminder["is_sent"]) {
+        return $reminder["activity_name"] . " 已完成提醒";
     }
 
-    if (strtotime($reminder_time) <= time()) {
-        return "提醒時間已到";
+    if (strtotime($reminder["reminder_time"]) <= time()) {
+        return $reminder["activity_name"] . " 提醒時間已到";
     }
 
-    return "尚未到提醒時間";
-}
-
-function getReminderStatusClass($reminder_time, $is_sent) {
-    if ($is_sent) {
-        return "sent";
-    }
-
-    if (strtotime($reminder_time) <= time()) {
-        return "due";
-    }
-
-    return "pending";
+    return $reminder["activity_name"] . " 將於 " . date("m/d H:i", strtotime($reminder["reminder_time"])) . " 提醒";
 }
 
 function getScheduleStatusClass($status) {
@@ -157,86 +145,182 @@ function getScheduleStatusClass($status) {
 <head>
     <meta charset="UTF-8">
     <title>使用者資料</title>
+
     <style>
-        body {
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
             font-family: "Microsoft JhengHei", sans-serif;
-            background-color: #f5f5f5;
-            padding: 30px;
         }
 
-        .container {
-            max-width: 850px;
-            margin: auto;
-            background: white;
-            padding: 30px;
+        body {
+            background-color: #ffffff;
+            color: #111;
+        }
+
+        .top-bar {
+            width: 100%;
+            height: 72px;
+            background-color: #d9d9d9;
+            border-top: 2px solid #555;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 28px;
+        }
+
+        .system-title {
+            font-size: 30px;
+            font-weight: 400;
+        }
+
+        .top-nav {
+            display: flex;
+            gap: 28px;
+        }
+
+        .top-nav a {
+            text-decoration: none;
+            color: black;
+            font-size: 24px;
+            font-weight: 500;
+        }
+
+        .page {
+            width: 94%;
+            height: calc(100vh - 72px);
+            margin: 0 auto;
+            display: flex;
+            gap: 42px;
+            padding-top: 38px;
+            background-color: #ffffff;
+        }
+
+        .sidebar {
+            width: 270px;
+            height: 430px;
+            background-color: #d9d9d9;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 45px;
+        }
+
+        .avatar {
+            width: 170px;
+            height: 170px;
+            border-radius: 50%;
+            background-color: #aaa;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 34px;
+        }
+
+        .avatar::before {
+            content: "";
+            position: absolute;
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            background-color: #d9d9d9;
+            top: 34px;
+            left: 54px;
+        }
+
+        .avatar::after {
+            content: "";
+            position: absolute;
+            width: 140px;
+            height: 90px;
+            border-radius: 50% 50% 0 0;
+            background-color: #d9d9d9;
+            bottom: -15px;
+            left: 15px;
+        }
+
+        .side-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .side-menu a {
+            text-decoration: none;
+            color: black;
+            font-size: 26px;
+            font-weight: 400;
+        }
+
+        .side-menu a.active {
+            font-weight: bold;
+        }
+
+        .content {
+            flex: 1;
+            height: 430px;
+            background-color: #d9d9d9;
+            border-radius: 10px 10px 0 0;
+            padding: 26px 38px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background-color: #666;
             border-radius: 10px;
         }
 
-        h2 {
-            margin-bottom: 20px;
-        }
-
-        .menu {
+        .reminder-list {
             display: flex;
             flex-direction: column;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .menu a {
-            text-decoration: none;
-            color: black;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-
-        .menu a:hover {
-            background-color: #eee;
-        }
-
-        .section-title {
-            margin-top: 25px;
-            margin-bottom: 15px;
-            font-size: 22px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 8px;
-        }
-
-        .empty-message {
-            background-color: #f8f8f8;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            padding: 18px;
-            color: #666;
+            gap: 14px;
         }
 
         .reminder-card {
-            border: 1px solid #bbb;
+            position: relative;
+            background-color: #eeeeee;
             border-radius: 10px;
-            padding: 18px;
-            margin-bottom: 15px;
-            background-color: #fafafa;
+            padding: 22px 38px;
+            min-height: 86px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .reminder-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .reminder-title a {
-            color: #222;
+        .reminder-card a {
             text-decoration: none;
+            color: black;
+            font-size: 28px;
+            line-height: 1.4;
         }
 
-        .reminder-title a:hover {
-            text-decoration: underline;
-        }
-
-        .reminder-card p {
-            margin: 6px 0;
+        .reminder-detail {
+            margin-top: 8px;
             font-size: 15px;
+            color: #555;
+        }
+
+        .red-dot {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: #ff3333;
+            border-radius: 50%;
+            right: -6px;
+            top: -6px;
+        }
+
+        .small-info {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #555;
         }
 
         .status-interested {
@@ -254,145 +338,175 @@ function getScheduleStatusClass($status) {
             font-weight: bold;
         }
 
-        .reminder-state {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-
-        .pending {
-            background-color: #eeeeee;
-            color: #555;
-        }
-
-        .due {
-            background-color: #ffe0e0;
-            color: #b00000;
-            font-weight: bold;
-        }
-
-        .sent {
-            background-color: #e0e0e0;
-            color: #777;
-        }
-
         .mark-btn {
             margin-top: 10px;
-            padding: 8px 16px;
+            width: 120px;
+            padding: 7px 12px;
             border: none;
             border-radius: 20px;
             background-color: #999;
             color: white;
             cursor: pointer;
-            font-size: 14px;
         }
 
+        .empty-message {
+            font-size: 24px;
+            color: #555;
+            padding: 30px;
+        }
+
+        .password-area {
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .password-form {
+            display: grid;
+            grid-template-columns: 130px 230px;
+            row-gap: 14px;
+            column-gap: 22px;
+            align-items: center;
+        }
+
+        .password-form label {
+            text-align: right;
+            font-size: 24px;
+        }
+
+        .password-form input {
+            width: 230px;
+            height: 36px;
+            border: none;
+            border-radius: 18px;
+            padding: 0 15px;
+            font-size: 18px;
+            background-color: white;
+        }
+
+        .password-form button {
+            grid-column: 2;
+            margin-top: 12px;
+            width: 120px;
+            padding: 8px 0;
+            border: none;
+            border-radius: 18px;
+            background-color: #999;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .password-form button:hover,
         .mark-btn:hover {
             background-color: #777;
         }
     </style>
 </head>
+
 <body>
 
-<div class="container">
+<header class="top-bar">
+    <div class="system-title">活動導購與行程紀錄系統</div>
 
-    <h2>使用者資料</h2>
+    <nav class="top-nav">
+        <a href="../backend/my_schedule.php">行事曆</a>
+        <a href="profile.php">使用者</a>
+    </nav>
+</header>
 
-    <p>
-        歡迎，
-        <strong><?php echo htmlspecialchars($user_name); ?></strong>
-    </p>
+<div class="page">
 
-    <br>
+    <aside class="sidebar">
+        <div class="avatar"></div>
 
-    <div class="menu">
-        <a href="#reminder-section">提醒</a>
-        <a href="../backend/update_password.php">修改密碼</a>
-        <a href="../backend/logout.php">登出</a>
-    </div>
+        <nav class="side-menu">
+            <a href="profile.php?tab=reminder" class="<?= $tab === 'reminder' ? 'active' : '' ?>">提醒</a>
+            <a href="profile.php?tab=password" class="<?= $tab === 'password' ? 'active' : '' ?>">修改密碼</a>
+            <a href="../backend/logout.php">登出</a>
+        </nav>
+    </aside>
 
-    <h3 id="reminder-section" class="section-title">提醒列表</h3>
+    <main class="content">
 
-    <?php if (count($reminders) === 0): ?>
+        <?php if ($tab === "password"): ?>
 
-        <div class="empty-message">
-            目前沒有提醒。加入「感興趣」或「已購票」後，系統會自動建立活動前一天中午 12:00 的提醒。
-        </div>
+            <div class="password-area">
+                <form class="password-form" action="../backend/update_password.php" method="post">
+                    <label>原密碼</label>
+                    <input type="password" name="old_password" required>
 
-    <?php else: ?>
+                    <label>新密碼</label>
+                    <input type="password" name="new_password" required>
 
-        <?php foreach ($reminders as $reminder): ?>
-            <?php
-                $reminder_status_text = getReminderStatusText(
-                    $reminder["reminder_time"],
-                    $reminder["is_sent"]
-                );
+                    <label>確認新密碼</label>
+                    <input type="password" name="confirm_password" required>
 
-                $reminder_status_class = getReminderStatusClass(
-                    $reminder["reminder_time"],
-                    $reminder["is_sent"]
-                );
-
-                $schedule_status_class = getScheduleStatusClass($reminder["display_status"]);
-            ?>
-
-            <div class="reminder-card">
-                <div class="reminder-title">
-                    <a href="activity_detail.php?id=<?php echo htmlspecialchars($reminder["activity_id"]); ?>">
-                        <?php echo htmlspecialchars($reminder["activity_name"]); ?>
-                    </a>
-                </div>
-
-                <p>
-                    活動時間：
-                    <?php echo date("Y/m/d H:i", strtotime($reminder["activity_time"])); ?>
-                </p>
-
-                <p>
-                    活動地點：
-                    <?php echo htmlspecialchars($reminder["location"]); ?>
-                </p>
-
-                <p>
-                    行程狀態：
-                    <span class="<?php echo $schedule_status_class; ?>">
-                        <?php echo htmlspecialchars($reminder["display_status"]); ?>
-                    </span>
-                </p>
-
-                <p>
-                    提醒時間：
-                    <?php echo date("Y/m/d H:i", strtotime($reminder["reminder_time"])); ?>
-                </p>
-
-                <p>
-                    提醒方式：
-                    <?php echo htmlspecialchars($reminder["notify_method"]); ?>
-                </p>
-
-                <p>
-                    提醒狀態：
-                    <span class="reminder-state <?php echo $reminder_status_class; ?>">
-                        <?php echo $reminder_status_text; ?>
-                    </span>
-                </p>
-
-                <?php if (!$reminder["is_sent"] && strtotime($reminder["reminder_time"]) <= time()): ?>
-                    <form action="profile.php" method="post">
-                        <input type="hidden" name="action" value="mark_sent">
-                        <input type="hidden" name="reminder_id" value="<?php echo htmlspecialchars($reminder["reminder_id"]); ?>">
-
-                        <button type="submit" class="mark-btn">
-                            標記已提醒
-                        </button>
-                    </form>
-                <?php endif; ?>
+                    <button type="submit">確認修改</button>
+                </form>
             </div>
 
-        <?php endforeach; ?>
+        <?php else: ?>
 
-    <?php endif; ?>
+            <?php if (count($reminders) === 0): ?>
+
+                <div class="empty-message">
+                    目前沒有提醒。
+                </div>
+
+            <?php else: ?>
+
+                <div class="reminder-list">
+                    <?php foreach ($reminders as $reminder): ?>
+                        <?php
+                            $is_due = !$reminder["is_sent"] && strtotime($reminder["reminder_time"]) <= time();
+                            $status_class = getScheduleStatusClass($reminder["display_status"]);
+                        ?>
+
+                        <div class="reminder-card">
+                            <?php if ($is_due): ?>
+                                <div class="red-dot"></div>
+                            <?php endif; ?>
+
+                            <a href="activity_detail.php?id=<?= htmlspecialchars($reminder["activity_id"]) ?>">
+                                <?= htmlspecialchars(getReminderText($reminder)) ?>
+                            </a>
+
+                            <div class="reminder-detail">
+                                活動時間：
+                                <?= date("Y/m/d H:i", strtotime($reminder["activity_time"])) ?>
+                                ｜
+                                行程狀態：
+                                <span class="<?= $status_class ?>">
+                                    <?= htmlspecialchars($reminder["display_status"]) ?>
+                                </span>
+                            </div>
+
+                            <div class="small-info">
+                                提醒時間：
+                                <?= date("Y/m/d H:i", strtotime($reminder["reminder_time"])) ?>
+                            </div>
+
+                            <?php if ($is_due): ?>
+                                <form action="profile.php?tab=reminder" method="post">
+                                    <input type="hidden" name="action" value="mark_sent">
+                                    <input type="hidden" name="reminder_id" value="<?= htmlspecialchars($reminder["reminder_id"]) ?>">
+
+                                    <button type="submit" class="mark-btn">
+                                        標記已提醒
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+            <?php endif; ?>
+
+        <?php endif; ?>
+
+    </main>
 
 </div>
 
