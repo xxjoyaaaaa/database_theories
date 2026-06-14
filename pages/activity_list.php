@@ -132,9 +132,9 @@ require_once '../backend/get_activities.php';
                    class="group rounded-[1.5rem] bg-white border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition overflow-hidden">
 
                     <?php if (!empty($row['image_url'])): ?>
-                        <img src="<?= htmlspecialchars($row['image_url']) ?>" 
-                             alt="<?= htmlspecialchars($row['name']) ?>" 
-                        class="h-36 w-full object-cover">
+                       <img src="../<?= htmlspecialchars($row['image_url']) ?>"
+                         alt="<?= htmlspecialchars($row['name']) ?>"
+                         class="h-36 w-full object-cover">
                     <?php else: ?>
                         <div class="h-36 bg-gradient-to-br from-slate-200 to-indigo-100 flex items-center justify-center">
                             <span class="text-4xl">🎫</span>
