@@ -89,6 +89,20 @@ NOW(),
 'C003'
 );
 
+INSERT INTO ACTIVITY
+VALUES (
+'A004',
+'瓦豆演講',
+'2026-06-15 08:00:00',
+'瓦豆大學',
+'Manual',
+'WD001',
+'https://wadou.example.com',
+'已結束',
+NOW(),
+'C003'
+);
+
 
 -- SCHEDULE
 
