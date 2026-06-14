@@ -2,12 +2,6 @@
 session_start();
 require_once 'db.php';
 
-/*
-|--------------------------------------------------------------------------
-| 取得資料庫連線
-|--------------------------------------------------------------------------
-*/
-
 if (isset($conn)) {
     $db = $conn;
 } else if (isset($mysqli)) {
@@ -16,19 +10,7 @@ if (isset($conn)) {
     die('資料庫連線失敗，請檢查 db.php 是否有 $conn 或 $mysqli');
 }
 
-/*
-|--------------------------------------------------------------------------
-| 取得使用者
-|--------------------------------------------------------------------------
-*/
-
 $user_id = $_SESSION['user_id'] ?? 'U001';
-
-/*
-|--------------------------------------------------------------------------
-| 取得年份與月份
-|--------------------------------------------------------------------------
-*/
 
 $year = isset($_GET['year']) ? intval($_GET['year']) : intval(date('Y'));
 $month = isset($_GET['month']) ? intval($_GET['month']) : intval(date('m'));
@@ -42,12 +24,6 @@ if ($month > 12) {
     $month = 1;
     $year++;
 }
-
-/*
-|--------------------------------------------------------------------------
-| 計算月曆資訊
-|--------------------------------------------------------------------------
-*/
 
 $first_day = sprintf('%04d-%02d-01', $year, $month);
 $days_in_month = intval(date('t', strtotime($first_day)));
@@ -68,13 +44,6 @@ if ($next_month > 12) {
     $next_month = 1;
     $next_year++;
 }
-
-/*
-|--------------------------------------------------------------------------
-| 查詢這個使用者當月的行程
-| 如果活動時間已過，顯示狀態自動變成「已舉行」
-|--------------------------------------------------------------------------
-*/
 
 $start_date = sprintf('%04d-%02d-01 00:00:00', $year, $month);
 
@@ -140,22 +109,16 @@ while ($row = $result->fetch_assoc()) {
 
 $stmt->close();
 
-/*
-|--------------------------------------------------------------------------
-| 狀態顏色 class
-|--------------------------------------------------------------------------
-*/
-
 function getStatusClass($status) {
     if ($status === '感興趣') {
-        return 'status-interested';
+        return 'bg-blue-50 text-blue-700 border-blue-100';
     } else if ($status === '已購票') {
-        return 'status-paid';
+        return 'bg-red-50 text-red-700 border-red-100';
     } else if ($status === '已舉行') {
-        return 'status-finished';
+        return 'bg-slate-100 text-slate-500 border-slate-200';
     }
 
-    return '';
+    return 'bg-slate-50 text-slate-500 border-slate-100';
 }
 ?>
 
@@ -163,207 +126,85 @@ function getStatusClass($status) {
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>行事曆</title>
-
-    <style>
-        * {
-            box-sizing: border-box;
+    <title>行事曆｜活動導購與行程紀錄系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Microsoft JhengHei', 'ui-sans-serif', 'system-ui']
+                    }
+                }
+            }
         }
-
-        body {
-            margin: 0;
-            font-family: Arial, "Microsoft JhengHei", sans-serif;
-            background-color: #ffffff;
-            color: #333;
-        }
-
-        .top-bar {
-            width: 100%;
-            height: 72px;
-            background-color: #d9d9d9;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 32px;
-            border-bottom: 1px solid #c8c8c8;
-        }
-
-        .system-title {
-            font-size: 24px;
-            font-weight: 500;
-            color: #222;
-        }
-
-        .top-nav {
-            display: flex;
-            gap: 28px;
-            align-items: center;
-        }
-
-        .top-nav a {
-            color: #222;
-            text-decoration: none;
-            font-size: 20px;
-            font-weight: 500;
-        }
-
-        .top-nav a:hover {
-            text-decoration: underline;
-        }
-
-        .calendar-wrapper {
-            width: 82%;
-            margin: 42px auto 0 auto;
-        }
-
-        .calendar-wrapper h2 {
-            margin: 0 0 22px 0;
-            font-size: 28px;
-            font-weight: bold;
-            color: #111;
-        }
-
-        .month-control {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 42px;
-            margin-bottom: 20px;
-            font-size: 20px;
-        }
-
-        .month-control a {
-            color: #111;
-            text-decoration: none;
-            border: 1px solid #999;
-            padding: 8px 18px;
-            border-radius: 6px;
-            background-color: #f0f0f0;
-            font-size: 18px;
-        }
-
-        .month-control a:hover {
-            background-color: #e0e0e0;
-        }
-
-        .calendar-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            background-color: #ffffff;
-        }
-
-        .calendar-table th {
-            border: 2px solid #333;
-            height: 42px;
-            background-color: #eeeeee;
-            font-weight: normal;
-            font-size: 18px;
-        }
-
-        .calendar-table td {
-            border: 2px solid #333;
-            height: 110px;
-            vertical-align: top;
-            padding: 6px;
-            font-size: 16px;
-        }
-
-        .date-number {
-            font-size: 18px;
-            margin-bottom: 8px;
-            color: #111;
-        }
-
-        .event-link {
-            display: block;
-            font-size: 16px;
-            text-decoration: none;
-            margin-top: 3px;
-            word-break: break-all;
-        }
-
-        .event-link:hover {
-            text-decoration: underline;
-        }
-
-        .status-interested {
-            color: blue;
-        }
-
-        .status-paid {
-            color: red;
-        }
-
-        .status-finished {
-            color: gray;
-        }
-
-        .legend {
-            margin-top: 18px;
-            font-size: 16px;
-        }
-
-        .legend span {
-            margin-right: 24px;
-            font-weight: 500;
-        }
-
-        .empty-cell {
-            background-color: #fafafa;
-        }
-    </style>
+    </script>
 </head>
 
-<body>
+<body class="min-h-screen bg-slate-50 text-slate-900">
 
-<header class="top-bar">
-    <div class="system-title">活動導購與行程紀錄系統</div>
+<header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="../pages/activity_list.php" class="text-xl md:text-2xl font-bold tracking-tight">
+            活動導購與行程紀錄系統
+        </a>
 
-    <nav class="top-nav">
-        <a href="../pages/activity_list.php">首頁</a>
-        <a href="my_schedule.php">行事曆</a>
-        <a href="../pages/profile.php">使用者</a>
-    </nav>
+        <nav class="flex items-center gap-3">
+            <a href="../pages/activity_list.php" class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">首頁</a>
+            <a href="my_schedule.php" class="px-4 py-2 rounded-full bg-indigo-50 text-indigo-700 font-semibold">行事曆</a>
+            <a href="../pages/profile.php" class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">使用者</a>
+        </nav>
+    </div>
 </header>
 
-<main class="calendar-wrapper">
-    <h2>行事曆</h2>
+<main class="max-w-7xl mx-auto px-6 py-10">
 
-    <div class="month-control">
-        <a href="my_schedule.php?year=<?= $prev_year ?>&month=<?= $prev_month ?>">上一月</a>
+    <section class="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
+        <div>
+            <p class="text-indigo-600 font-semibold">My Schedule</p>
+            <h1 class="mt-2 text-4xl font-extrabold tracking-tight">我的行事曆</h1>
+            <p class="mt-3 text-slate-500">查看你感興趣、已購票與已舉行的活動。</p>
+        </div>
 
-        <strong><?= htmlspecialchars($year) ?> 年 <?= htmlspecialchars($month) ?> 月</strong>
+        <div class="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
+            <a href="my_schedule.php?year=<?= $prev_year ?>&month=<?= $prev_month ?>"
+               class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 transition">
+                上一月
+            </a>
 
-        <a href="my_schedule.php?year=<?= $next_year ?>&month=<?= $next_month ?>">下一月</a>
-    </div>
+            <strong class="px-5 py-2 rounded-xl bg-indigo-50 text-indigo-700">
+                <?= htmlspecialchars($year) ?> 年 <?= htmlspecialchars($month) ?> 月
+            </strong>
 
-    <table class="calendar-table">
-        <thead>
-            <tr>
-                <th>日</th>
-                <th>一</th>
-                <th>二</th>
-                <th>三</th>
-                <th>四</th>
-                <th>五</th>
-                <th>六</th>
-            </tr>
-        </thead>
+            <a href="my_schedule.php?year=<?= $next_year ?>&month=<?= $next_month ?>"
+               class="px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 transition">
+                下一月
+            </a>
+        </div>
+    </section>
 
-        <tbody>
+    <section class="rounded-[2rem] bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div class="grid grid-cols-7 bg-slate-900 text-white text-center font-semibold">
+            <div class="py-4">日</div>
+            <div class="py-4">一</div>
+            <div class="py-4">二</div>
+            <div class="py-4">三</div>
+            <div class="py-4">四</div>
+            <div class="py-4">五</div>
+            <div class="py-4">六</div>
+        </div>
+
+        <div class="grid grid-cols-7">
             <?php
             $day = 1;
 
             for ($week = 0; $week < 6; $week++) {
-                echo "<tr>";
-
                 for ($weekday = 0; $weekday < 7; $weekday++) {
                     if ($week === 0 && $weekday < $start_weekday) {
-                        echo "<td class='empty-cell'></td>";
+                        echo "<div class='min-h-32 border-r border-b border-slate-100 bg-slate-50'></div>";
                     } else if ($day <= $days_in_month) {
-                        echo "<td>";
-                        echo "<div class='date-number'>" . $day . "</div>";
+                        echo "<div class='min-h-32 border-r border-b border-slate-100 p-3 bg-white hover:bg-slate-50 transition'>";
+                        echo "<div class='text-sm font-bold text-slate-700 mb-2'>" . $day . "</div>";
 
                         if (isset($events_by_day[$day])) {
                             foreach ($events_by_day[$day] as $event) {
@@ -372,35 +213,33 @@ function getStatusClass($status) {
                                 $status = htmlspecialchars($event['status']);
                                 $class = getStatusClass($event['status']);
 
-                                echo "<a class='event-link {$class}' href='../pages/activity_detail.php?id={$activity_id}' title='{$status}'>";
+                                echo "<a class='block rounded-xl border px-3 py-2 mb-2 text-sm font-semibold {$class} hover:shadow-sm transition' href='../pages/activity_detail.php?id={$activity_id}' title='{$status}'>";
                                 echo $activity_name;
                                 echo "</a>";
                             }
                         }
 
-                        echo "</td>";
-
+                        echo "</div>";
                         $day++;
                     } else {
-                        echo "<td class='empty-cell'></td>";
+                        echo "<div class='min-h-32 border-r border-b border-slate-100 bg-slate-50'></div>";
                     }
                 }
-
-                echo "</tr>";
 
                 if ($day > $days_in_month) {
                     break;
                 }
             }
             ?>
-        </tbody>
-    </table>
+        </div>
+    </section>
 
-    <div class="legend">
-        <span class="status-interested">感興趣</span>
-        <span class="status-paid">已購票</span>
-        <span class="status-finished">已舉行</span>
+    <div class="mt-6 flex flex-wrap gap-3">
+        <span class="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 text-blue-700 font-semibold">感興趣</span>
+        <span class="inline-flex items-center px-4 py-2 rounded-full bg-red-50 text-red-700 font-semibold">已購票</span>
+        <span class="inline-flex items-center px-4 py-2 rounded-full bg-slate-100 text-slate-500 font-semibold">已舉行</span>
     </div>
+
 </main>
 
 </body>

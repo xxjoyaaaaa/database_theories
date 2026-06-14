@@ -12,295 +12,173 @@ require_once '../backend/get_activities.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>活動導購與行程紀錄系統</title>
-
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: "Microsoft JhengHei", sans-serif;
+    <title>活動列表｜活動導購與行程紀錄系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Microsoft JhengHei', 'ui-sans-serif', 'system-ui']
+                    }
+                }
+            }
         }
-
-        body {
-            background-color: #ffffff;
-            color: #333;
-        }
-
-        .navbar {
-            background-color: #e0e0e0;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #ccc;
-
-            position: sticky; 
-            top: 0;
-            z-index: 100;
-        }
-
-        .navbar h1 {
-            font-size: 24px;
-            font-weight: normal;
-        }
-
-        .navbar h1 a {
-            text-decoration: none;
-            color: #333;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 24px;
-            font-size: 18px;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: #333;
-            cursor: pointer;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-
-        .main-container {
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-
-        .header-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .title-area {
-            display: flex;
-            align-items: center;
-            font-size: 24px;
-            gap: 10px;
-        }
-
-        .star-icon {
-            color: #fbd34d;
-            font-size: 30px;
-        }
-
-        .search-container {
-            position: relative;
-        }
-
-        .search-btn {
-            background-color: #b0b0b0;
-            border: none;
-            border-radius: 20px;
-            padding: 8px 20px;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            margin-top: 5px;
-            background-color: white;
-            border: 1px solid #ccc;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            width: 250px;
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 10;
-        }
-
-        .dropdown-menu.show {
-            display: block;
-        }
-
-        .filter-group {
-            margin-bottom: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .filter-group label {
-            font-size: 14px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        .filter-input {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .submit-filter-btn {
-            width: 100%;
-            background-color: #333;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .submit-filter-btn:hover {
-            background-color: #555;
-        }
-
-        .activity-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .activity-card {
-            background-color: #dcdcdc;
-            border-radius: 10px;
-            padding: 20px 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .activity-card:hover {
-            background-color: #d0d0d0;
-        }
-
-        .card-left {
-            display: flex;
-            align-items: baseline;
-            gap: 30px;
-        }
-
-        .activity-name {
-            font-size: 22px;
-            font-weight: 500;
-        }
-
-        .activity-date {
-            font-size: 16px;
-        }
-
-        .card-right {
-            font-size: 12px;
-            color: #555;
-        }
-    </style>
+    </script>
 </head>
 
-<body>
+<body class="min-h-screen bg-slate-50 text-slate-900">
 
-<nav class="navbar">
-    <h1>
-        <a href="activity_list.php">
+<header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="activity_list.php" class="text-xl md:text-2xl font-bold tracking-tight">
             活動導購與行程紀錄系統
         </a>
-    </h1>
 
-    <div class="nav-links">
-        <a href="../backend/my_schedule.php">行事曆</a>
-        <a href="profile.php">使用者</a>
+        <nav class="flex items-center gap-3">
+            <a href="../backend/my_schedule.php"
+               class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                行事曆
+            </a>
+            <a href="profile.php"
+               class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                使用者
+            </a>
+        </nav>
     </div>
-</nav>
+</header>
 
-<main class="main-container">
+<main class="max-w-7xl mx-auto px-6 py-10">
 
-    <div class="header-section">
-        <div class="title-area">
-            <span class="star-icon">★</span>
-            <span>最新活動</span>
-        </div>
+    <section class="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-indigo-600 to-blue-600 text-white p-8 md:p-10 shadow-xl shadow-indigo-100 mb-8">
+        <div class="absolute -right-16 -top-16 w-52 h-52 rounded-full bg-white/10"></div>
+        <div class="absolute right-16 bottom-6 w-24 h-24 rounded-full bg-white/10"></div>
 
-        <div class="search-container">
-            <button class="search-btn" id="searchBtn">
-                搜尋 <span id="arrowIcon">▼</span>
+        <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 text-white/90 mb-5">
+                    <span>★</span>
+                    <span>最新活動</span>
+                </div>
+                <h1 class="text-3xl md:text-5xl font-extrabold">探索你感興趣的活動</h1>
+                <p class="mt-4 text-white/80 text-lg leading-8">
+                    篩選活動、查看售票狀態，並一鍵加入個人行事曆。
+                </p>
+            </div>
+
+            <button id="searchBtn"
+                    class="inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-indigo-700 px-6 py-3 font-semibold shadow-lg hover:bg-indigo-50 transition">
+                搜尋與篩選
+                <span id="arrowIcon">▼</span>
             </button>
-
-            <form class="dropdown-menu" id="dropdownMenu" action="activity_list.php" method="GET">
-
-                <div class="filter-group">
-                    <label for="date">日期</label>
-                    <input
-                        type="date"
-                        id="date"
-                        name="date"
-                        class="filter-input"
-                        value="<?= htmlspecialchars($filter_date) ?>"
-                    >
-                </div>
-
-                <div class="filter-group">
-                    <label for="location">地點</label>
-                    <select id="location" name="location" class="filter-input">
-                        <option value="">全部地區</option>
-                        <option value="台北小巨蛋" <?= $filter_location == '台北小巨蛋' ? 'selected' : '' ?>>台北小巨蛋</option>
-                        <option value="台北世貿" <?= $filter_location == '台北世貿' ? 'selected' : '' ?>>台北世貿</option>
-                        <option value="台灣師範大學" <?= $filter_location == '台灣師範大學' ? 'selected' : '' ?>>台灣師範大學</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="category">類別</label>
-                    <select id="category" name="category" class="filter-input">
-                        <option value="">所有類別</option>
-                        <option value="C001" <?= $filter_category == 'C001' ? 'selected' : '' ?>>演唱會</option>
-                        <option value="C002" <?= $filter_category == 'C002' ? 'selected' : '' ?>>展覽</option>
-                        <option value="C003" <?= $filter_category == 'C003' ? 'selected' : '' ?>>講座</option>
-                        <option value="C004" <?= $filter_category == 'C004' ? 'selected' : '' ?>>運動賽事</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="submit-filter-btn">套用篩選</button>
-            </form>
         </div>
-    </div>
+    </section>
 
-    <div class="activity-list">
-        <?php if (!empty($activities)): ?>
+    <form id="dropdownMenu"
+          action="activity_list.php"
+          method="GET"
+          class="hidden mb-8 rounded-3xl bg-white border border-slate-200 shadow-lg p-6 grid md:grid-cols-4 gap-5">
+
+        <div>
+            <label for="date" class="block text-sm font-semibold text-slate-600 mb-2">日期</label>
+            <input type="date"
+                   id="date"
+                   name="date"
+                   class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100"
+                   value="<?= htmlspecialchars($filter_date) ?>">
+        </div>
+
+        <div>
+            <label for="location" class="block text-sm font-semibold text-slate-600 mb-2">地點</label>
+            <select id="location" name="location"
+                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100">
+                <option value="">全部地區</option>
+                <option value="台北小巨蛋" <?= $filter_location == '台北小巨蛋' ? 'selected' : '' ?>>台北小巨蛋</option>
+                <option value="台北世貿" <?= $filter_location == '台北世貿' ? 'selected' : '' ?>>台北世貿</option>
+                <option value="台灣師範大學" <?= $filter_location == '台灣師範大學' ? 'selected' : '' ?>>台灣師範大學</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="category" class="block text-sm font-semibold text-slate-600 mb-2">類別</label>
+            <select id="category" name="category"
+                    class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100">
+                <option value="">所有類別</option>
+                <option value="C001" <?= $filter_category == 'C001' ? 'selected' : '' ?>>演唱會</option>
+                <option value="C002" <?= $filter_category == 'C002' ? 'selected' : '' ?>>展覽</option>
+                <option value="C003" <?= $filter_category == 'C003' ? 'selected' : '' ?>>講座</option>
+                <option value="C004" <?= $filter_category == 'C004' ? 'selected' : '' ?>>運動賽事</option>
+            </select>
+        </div>
+
+        <div class="flex items-end">
+            <button type="submit"
+                    class="w-full rounded-2xl bg-slate-900 text-white px-5 py-3 font-semibold hover:bg-slate-700 transition">
+                套用篩選
+            </button>
+        </div>
+    </form>
+
+    <?php if (!empty($activities)): ?>
+        <section class="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
             <?php foreach ($activities as $row): ?>
                 <?php
-                    $activity_date = date('Y/m/d', strtotime($row["activity_time"]));
+                    $activity_date = date('Y/m/d H:i', strtotime($row["activity_time"]));
                     $activity_id = htmlspecialchars($row["activity_id"]);
+                    $is_finished = strtotime($row["activity_time"]) < time();
                 ?>
 
-                <div class="activity-card" onclick="location.href='activity_detail.php?id=<?= $activity_id ?>'">
-                    <div class="card-left">
-                        <span class="activity-name">
+                <a href="activity_detail.php?id=<?= $activity_id ?>"
+                   class="group rounded-[1.5rem] bg-white border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition overflow-hidden">
+
+                    <div class="h-36 bg-gradient-to-br from-slate-200 to-indigo-100 flex items-center justify-center">
+                        <span class="text-4xl">🎫</span>
+                    </div>
+
+                    <div class="p-6">
+                        <div class="flex items-center justify-between gap-3 mb-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold <?= $is_finished ? 'bg-slate-100 text-slate-500' : 'bg-indigo-50 text-indigo-600' ?>">
+                                <?= $is_finished ? '已舉行' : '開放查看' ?>
+                            </span>
+
+                            <?php if (!empty($row["cache_status"])): ?>
+                                <span class="text-xs text-slate-500">
+                                    <?= htmlspecialchars($row["cache_status"]) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+
+                        <h2 class="text-2xl font-bold group-hover:text-indigo-600 transition">
                             <?= htmlspecialchars($row["name"]) ?>
-                        </span>
+                        </h2>
 
-                        <span class="activity-date">
-                            活動日期：<?= $activity_date ?>
-                        </span>
-                    </div>
+                        <div class="mt-5 space-y-3 text-slate-500">
+                            <p class="flex items-start gap-2">
+                                <span>📅</span>
+                                <span><?= $activity_date ?></span>
+                            </p>
 
-                    <div class="card-right">
-                        點選閱讀詳細資訊...
+                            <?php if (!empty($row["location"])): ?>
+                                <p class="flex items-start gap-2">
+                                    <span>📍</span>
+                                    <span><?= htmlspecialchars($row["location"]) ?></span>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="mt-6 inline-flex items-center text-indigo-600 font-semibold">
+                            查看詳細資訊
+                            <span class="ml-2 group-hover:translate-x-1 transition">→</span>
+                        </div>
                     </div>
-                </div>
+                </a>
             <?php endforeach; ?>
-        <?php else: ?>
-            <p style="text-align:center; margin-top:20px; color:#666;">
-                目前沒有符合條件的活動。
-            </p>
-        <?php endif; ?>
-    </div>
+        </section>
+    <?php else: ?>
+        <div class="rounded-[1.5rem] bg-white border border-slate-200 p-12 text-center text-slate-500">
+            目前沒有符合條件的活動。
+        </div>
+    <?php endif; ?>
 
 </main>
 
@@ -309,21 +187,9 @@ require_once '../backend/get_activities.php';
     const dropdownMenu = document.getElementById('dropdownMenu');
     const arrowIcon = document.getElementById('arrowIcon');
 
-    searchBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdownMenu.classList.toggle('show');
-        arrowIcon.textContent = dropdownMenu.classList.contains('show') ? '▲' : '▼';
-    });
-
-    dropdownMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-
-    document.addEventListener('click', () => {
-        if (dropdownMenu.classList.contains('show')) {
-            dropdownMenu.classList.remove('show');
-            arrowIcon.textContent = '▼';
-        }
+    searchBtn.addEventListener('click', () => {
+        dropdownMenu.classList.toggle('hidden');
+        arrowIcon.textContent = dropdownMenu.classList.contains('hidden') ? '▼' : '▲';
     });
 </script>
 
