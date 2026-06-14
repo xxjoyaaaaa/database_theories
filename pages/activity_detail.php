@@ -322,8 +322,9 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
 <main class="main-container">
 
     <?php if (!empty($activity['image_url'])): ?>
-    <img src="<?= htmlspecialchars($activity['image_url']) ?>" alt="<?= htmlspecialchars($activity['name']) ?>" class="activity-image">
-<?php else: ?>
+    <img src="../<?= htmlspecialchars($activity['image_url']) ?>"
+        alt="<?= htmlspecialchars($activity['name']) ?>"
+        class="activity-image"><?php else: ?>
     <div class="image-placeholder">
         暫無活動照片
     </div>
