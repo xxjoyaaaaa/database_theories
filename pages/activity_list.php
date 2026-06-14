@@ -92,17 +92,18 @@ require_once '../backend/get_activities.php';
             <label for="location" class="block text-sm font-semibold text-slate-600 mb-2">地點</label>
             <select id="location" name="location"
                     class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100">
-                <option value="">全部地區</option>
-                <select id="location" name="location" class="filter-input">
                     <option value="">全部地區</option>
+                    <select id="location" name="location" class="filter-input">
+                        <option value="">全部地區</option>
 
-                    <?php foreach ($locations as $location): ?>
-                        <option value="<?= htmlspecialchars($location) ?>"
-                            <?= $filter_location == $location ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($location) ?>
-                        </option>
-                    <?php endforeach; ?>
-</select>
+                        <?php foreach ($locations as $location): ?>
+                            <option value="<?= htmlspecialchars($location) ?>"
+                                <?= $filter_location == $location ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($location) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </select>
         </div>
 
