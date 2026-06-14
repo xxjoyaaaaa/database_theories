@@ -30,6 +30,10 @@ require_once '../backend/get_activities.php';
             justify-content: space-between;
             align-items: center;
             border-bottom: 2px solid #ccc;
+
+            position: sticky; 
+            top: 0;
+            z-index: 100;
         }
         .navbar h1 {
             font-size: 24px;
