@@ -27,4 +27,14 @@ if ($result && $result->num_rows > 0) {
         $activities[] = $row;
     }
 }
+$location_sql = "SELECT DISTINCT location FROM ACTIVITY ORDER BY location ASC";
+$location_result = $conn->query($location_sql);
+
+$locations = [];
+
+if ($location_result && $location_result->num_rows > 0) {
+    while ($row = $location_result->fetch_assoc()) {
+        $locations[] = $row["location"];
+    }
+}
 ?>

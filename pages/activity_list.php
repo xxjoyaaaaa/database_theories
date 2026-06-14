@@ -93,9 +93,16 @@ require_once '../backend/get_activities.php';
             <select id="location" name="location"
                     class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100">
                 <option value="">全部地區</option>
-                <option value="台北小巨蛋" <?= $filter_location == '台北小巨蛋' ? 'selected' : '' ?>>台北小巨蛋</option>
-                <option value="台北世貿" <?= $filter_location == '台北世貿' ? 'selected' : '' ?>>台北世貿</option>
-                <option value="台灣師範大學" <?= $filter_location == '台灣師範大學' ? 'selected' : '' ?>>台灣師範大學</option>
+                <select id="location" name="location" class="filter-input">
+                    <option value="">全部地區</option>
+
+                    <?php foreach ($locations as $location): ?>
+                        <option value="<?= htmlspecialchars($location) ?>"
+                            <?= $filter_location == $location ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($location) ?>
+                        </option>
+                    <?php endforeach; ?>
+</select>
             </select>
         </div>
 
