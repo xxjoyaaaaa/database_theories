@@ -45,7 +45,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $update_stmt->bind_param("ss", $new_hash, $user_id);
 
         if ($update_stmt->execute()) {
-            $message = "密碼修改成功";
+            echo "<script>
+                    alert('密碼修改成功');
+                    window.location.href = '../pages/profile.php';
+                </script>";
+            exit;
         } else {
             $message = "修改失敗";
         }
