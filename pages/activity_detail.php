@@ -2,12 +2,6 @@
 session_start();
 require_once '../backend/db.php';
 
-/*
-|--------------------------------------------------------------------------
-| 取得資料庫連線
-|--------------------------------------------------------------------------
-*/
-
 if (isset($conn)) {
     $db = $conn;
 } else if (isset($mysqli)) {
@@ -24,12 +18,6 @@ if ($activity_id == '') {
     header("Location: activity_list.php");
     exit;
 }
-
-/*
-|--------------------------------------------------------------------------
-| 查詢活動資料
-|--------------------------------------------------------------------------
-*/
 
 $sql = "
     SELECT *
@@ -58,12 +46,6 @@ if (!$activity) {
     exit;
 }
 
-/*
-|--------------------------------------------------------------------------
-| 查詢目前使用者對這個活動的行程狀態
-|--------------------------------------------------------------------------
-*/
-
 $current_status = null;
 
 $sql = "
@@ -90,12 +72,6 @@ $stmt->bind_result($current_status);
 $stmt->fetch();
 $stmt->close();
 
-/*
-|--------------------------------------------------------------------------
-| 自動判斷是否已舉行
-|--------------------------------------------------------------------------
-*/
-
 $is_finished = strtotime($activity['activity_time']) < time();
 
 $display_status = $current_status;
@@ -104,27 +80,15 @@ if ($is_finished) {
     $display_status = '已舉行';
 }
 
-/*
-|--------------------------------------------------------------------------
-| 狀態顏色
-|--------------------------------------------------------------------------
-*/
-
-$status_color = "#555";
+$status_badge_class = 'bg-slate-100 text-slate-600';
 
 if ($display_status === "感興趣") {
-    $status_color = "blue";
+    $status_badge_class = "bg-blue-50 text-blue-700";
 } else if ($display_status === "已購票") {
-    $status_color = "red";
+    $status_badge_class = "bg-red-50 text-red-700";
 } else if ($display_status === "已舉行") {
-    $status_color = "gray";
+    $status_badge_class = "bg-slate-100 text-slate-500";
 }
-
-/*
-|--------------------------------------------------------------------------
-| 自動提醒時間：活動前一天中午 12:00
-|--------------------------------------------------------------------------
-*/
 
 $reminder_datetime = new DateTime($activity['activity_time']);
 $reminder_datetime->modify('-1 day');
@@ -137,292 +101,174 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($activity['name']) ?> - 活動詳細</title>
-
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: "Microsoft JhengHei", sans-serif;
+    <title><?= htmlspecialchars($activity['name']) ?>｜活動詳細</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Microsoft JhengHei', 'ui-sans-serif', 'system-ui']
+                    }
+                }
+            }
         }
-
-        body {
-            background-color: #ffffff;
-            color: #333;
-        }
-
-        .navbar {
-            background-color: #dcdcdc;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .navbar h1 {
-            font-size: 22px;
-            font-weight: normal;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 20px;
-            font-size: 16px;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: #333;
-            cursor: pointer;
-        }
-
-        .main-container {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-
-        .image-placeholder {
-            width: 100%;
-            height: 350px;
-            background-color: #dcdcdc;
-            border-radius: 15px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 48px;
-            color: #111;
-            margin-bottom: 30px;
-        }
-
-        .activity-image {
-            width: 100%;
-            height: 350px;
-            object-fit: cover; /* 這個屬性超重要！它會像裁切一樣，讓圖片填滿區塊但不會變形 */
-            border-radius: 15px;
-            margin-bottom: 30px;
-            display: block;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* 加一點淡淡的陰影讓圖片更有質感 */
-        }
-
-        .content-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 30px;
-        }
-
-        .info-left {
-            flex: 1;
-        }
-
-        .info-left h2 {
-            font-size: 28px;
-            margin-bottom: 15px;
-            font-weight: normal;
-        }
-
-        .info-left p {
-            font-size: 16px;
-            margin-bottom: 10px;
-            color: #222;
-        }
-
-        .action-right {
-            width: 260px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 10px;
-        }
-
-        .status-text {
-            font-size: 16px;
-            margin-bottom: 5px;
-        }
-
-        .heart-btn {
-            border: none;
-            background: none;
-            font-size: 22px;
-            color: #999;
-            cursor: pointer;
-            text-align: left;
-            padding: 8px 0;
-        }
-
-        .heart-btn.active {
-            color: #ff5e5e;
-        }
-
-        .btn {
-            padding: 10px 25px;
-            border: none;
-            border-radius: 30px;
-            font-size: 16px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
-            background-color: #a0a0a0;
-            color: #222;
-            transition: background-color 0.2s;
-            width: 100%;
-        }
-
-        .btn:hover {
-            background-color: #888;
-        }
-
-        .btn-link {
-            background-color: #9e9e9e;
-        }
-
-        .finished-notice {
-            color: gray;
-            font-weight: bold;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-
-        .reminder-box {
-            margin-top: 25px;
-            padding: 18px;
-            border: 1px solid #aaa;
-            border-radius: 10px;
-            background-color: #f8f8f8;
-        }
-
-        .reminder-box h3 {
-            margin-bottom: 12px;
-            font-size: 20px;
-        }
-
-        .notice {
-            color: #777;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-    </style>
+    </script>
 </head>
 
-<body>
+<body class="min-h-screen bg-slate-50 text-slate-900">
 
-<nav class="navbar">
-    <h1>活動導購與行程紀錄系統</h1>
+<header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="activity_list.php" class="text-xl md:text-2xl font-bold tracking-tight">
+            活動導購與行程紀錄系統
+        </a>
 
-    <div class="nav-links">
-        <a href="activity_list.php">首頁</a>
-        <a href="../backend/my_schedule.php">行事曆</a>
-        <a href="profile.php">使用者</a>
+        <nav class="flex items-center gap-3">
+            <a href="activity_list.php" class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">首頁</a>
+            <a href="../backend/my_schedule.php" class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">行事曆</a>
+            <a href="profile.php" class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">使用者</a>
+        </nav>
     </div>
-</nav>
+</header>
 
-<main class="main-container">
+<main class="max-w-7xl mx-auto px-6 py-10">
 
-    <?php if (!empty($activity['image_url'])): ?>
-    <img src="../<?= htmlspecialchars($activity['image_url']) ?>"
-        alt="<?= htmlspecialchars($activity['name']) ?>"
-        class="activity-image"><?php else: ?>
-    <div class="image-placeholder">
-        暫無活動照片
-    </div>
-<?php endif; ?>
+    <a href="activity_list.php" class="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition mb-6">
+        <span>←</span>
+        回活動列表
+    </a>
 
-    <div class="content-section">
+    <section class="grid lg:grid-cols-3 gap-8">
 
-        <div class="info-left">
-            <h2><?= htmlspecialchars($activity['name']) ?></h2>
+        <div class="lg:col-span-2">
+            <div class="h-72 md:h-96 rounded-[2rem] bg-gradient-to-br from-indigo-100 via-blue-100 to-slate-200 flex items-center justify-center shadow-sm border border-white">
+                <div class="text-center">
+                    <div class="text-6xl mb-4">🎫</div>
+                    <p class="text-slate-500 font-medium">活動照片</p>
+                </div>
+            </div>
 
-            <p>活動日期：<?= date('Y/m/d H:i', strtotime($activity['activity_time'])) ?></p>
-            <p>活動地點：<?= htmlspecialchars($activity['location']) ?></p>
+            <div class="mt-8 rounded-[2rem] bg-white border border-slate-200 shadow-sm p-7 md:p-8">
+                <div class="flex flex-wrap items-center gap-3 mb-5">
+                    <span class="inline-flex px-4 py-1.5 rounded-full text-sm font-semibold <?= $status_badge_class ?>">
+                        <?= $display_status ? htmlspecialchars($display_status) : '尚未加入行事曆' ?>
+                    </span>
 
-            <?php if (!empty($activity['cache_status'])): ?>
-                <p>售票狀態：<?= htmlspecialchars($activity['cache_status']) ?></p>
-            <?php endif; ?>
+                    <?php if (!empty($activity['cache_status'])): ?>
+                        <span class="inline-flex px-4 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-sm font-semibold">
+                            <?= htmlspecialchars($activity['cache_status']) ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
 
-            <p>活動簡述：目前資料庫暫無此欄位，先用這段假字撐撐場面！之後可以補上詳細的活動介紹。</p>
+                <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight">
+                    <?= htmlspecialchars($activity['name']) ?>
+                </h1>
 
-            <p class="status-text">
-                目前行程狀態：
-                <?php if ($display_status): ?>
-                    <strong style="color: <?= $status_color ?>;">
-                        <?= htmlspecialchars($display_status) ?>
-                    </strong>
-                <?php else: ?>
-                    <strong>尚未加入行事曆</strong>
-                <?php endif; ?>
-            </p>
+                <div class="mt-7 grid md:grid-cols-2 gap-4">
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-5">
+                        <p class="text-sm text-slate-500">活動日期</p>
+                        <p class="mt-1 text-lg font-semibold"><?= date('Y/m/d H:i', strtotime($activity['activity_time'])) ?></p>
+                    </div>
+
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-5">
+                        <p class="text-sm text-slate-500">活動地點</p>
+                        <p class="mt-1 text-lg font-semibold"><?= htmlspecialchars($activity['location']) ?></p>
+                    </div>
+
+                    <?php if (!empty($activity['source_platform'])): ?>
+                        <div class="rounded-2xl bg-slate-50 border border-slate-100 p-5">
+                            <p class="text-sm text-slate-500">來源平台</p>
+                            <p class="mt-1 text-lg font-semibold"><?= htmlspecialchars($activity['source_platform']) ?></p>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-5">
+                        <p class="text-sm text-slate-500">提醒設定</p>
+                        <p class="mt-1 text-lg font-semibold">
+                            <?php if ($is_finished): ?>
+                                活動已舉行，不再提醒
+                            <?php elseif ($current_status): ?>
+                                <?= htmlspecialchars($auto_reminder_time) ?>
+                            <?php else: ?>
+                                加入行事曆後自動建立
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h2 class="text-xl font-bold mb-3">活動簡述</h2>
+                    <p class="text-slate-600 leading-8">
+                        目前資料庫暫無活動介紹欄位，這裡先顯示活動基本資訊。之後若資料表增加 description 欄位，可以在此呈現詳細的活動內容、注意事項與購票說明。
+                    </p>
+                </div>
+            </div>
         </div>
 
-        <div class="action-right">
+        <aside class="lg:col-span-1">
+            <div class="sticky top-28 rounded-[2rem] bg-white border border-slate-200 shadow-sm p-6">
+                <h2 class="text-2xl font-bold">行程操作</h2>
 
-            <?php if (!$is_finished): ?>
+                <div class="mt-5 space-y-3">
 
-                <!-- 感興趣：再按一次可以取消 -->
-                <form action="../backend/add_schedule.php" method="post">
-                    <input type="hidden" name="activity_id" value="<?= htmlspecialchars($activity_id) ?>">
-                    <input type="hidden" name="status" value="感興趣">
+                    <?php if (!$is_finished): ?>
 
-                    <button type="submit"
-                            class="heart-btn <?= ($current_status === '感興趣') ? 'active' : '' ?>">
-                        <?= ($current_status === '感興趣') ? '♥ 取消感興趣' : '♡ 感興趣' ?>
-                    </button>
-                </form>
+                        <form action="../backend/add_schedule.php" method="post">
+                            <input type="hidden" name="activity_id" value="<?= htmlspecialchars($activity_id) ?>">
+                            <input type="hidden" name="status" value="感興趣">
 
-                <!-- 已購票：再按一次可以取消 -->
-                <form action="../backend/add_schedule.php" method="post">
-                    <input type="hidden" name="activity_id" value="<?= htmlspecialchars($activity_id) ?>">
-                    <input type="hidden" name="status" value="已購票">
+                            <button type="submit"
+                                    class="w-full rounded-2xl px-5 py-3.5 font-semibold border transition
+                                    <?= ($current_status === '感興趣') ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'bg-blue-50 text-blue-700 border-blue-100 hover:bg-blue-100' ?>">
+                                <?= ($current_status === '感興趣') ? '♥ 取消感興趣' : '♡ 加入感興趣' ?>
+                            </button>
+                        </form>
 
-                    <button type="submit" class="btn">
-                        <?= ($current_status === '已購票') ? '取消已購買' : '加入已購買' ?>
-                    </button>
-                </form>
+                        <form action="../backend/add_schedule.php" method="post">
+                            <input type="hidden" name="activity_id" value="<?= htmlspecialchars($activity_id) ?>">
+                            <input type="hidden" name="status" value="已購票">
 
-            <?php else: ?>
+                            <button type="submit"
+                                    class="w-full rounded-2xl px-5 py-3.5 font-semibold border transition
+                                    <?= ($current_status === '已購票') ? 'bg-red-600 text-white border-red-600 hover:bg-red-700' : 'bg-red-50 text-red-700 border-red-100 hover:bg-red-100' ?>">
+                                <?= ($current_status === '已購票') ? '取消已購買' : '加入已購買' ?>
+                            </button>
+                        </form>
 
-                <p class="finished-notice">
-                    此活動已舉行，無法再修改狀態。
-                </p>
+                    <?php else: ?>
 
-            <?php endif; ?>
+                        <div class="rounded-2xl bg-slate-100 text-slate-500 px-5 py-4 font-semibold">
+                            此活動已舉行，無法再修改狀態。
+                        </div>
 
-            <!-- 導購連結 -->
-            <?php if (!empty($activity['external_url']) && !$is_finished): ?>
-                <a href="<?= htmlspecialchars($activity['external_url']) ?>"
-                   target="_blank"
-                   class="btn btn-link">
-                    導購連結
-                </a>
-            <?php else: ?>
-                <button class="btn" style="background-color: #eee; color: #aaa; cursor: not-allowed;" disabled>
-                    <?= $is_finished ? '活動已結束' : '無導購連結' ?>
-                </button>
-            <?php endif; ?>
+                    <?php endif; ?>
 
-        </div>
+                    <?php if (!empty($activity['external_url']) && !$is_finished): ?>
+                        <a href="<?= htmlspecialchars($activity['external_url']) ?>"
+                           target="_blank"
+                           class="block w-full text-center rounded-2xl bg-slate-900 text-white px-5 py-3.5 font-semibold hover:bg-slate-700 transition">
+                            前往導購連結
+                        </a>
+                    <?php else: ?>
+                        <button disabled
+                                class="w-full rounded-2xl bg-slate-100 text-slate-400 px-5 py-3.5 font-semibold cursor-not-allowed">
+                            <?= $is_finished ? '活動已結束' : '無導購連結' ?>
+                        </button>
+                    <?php endif; ?>
+                </div>
 
-    </div>
+                <div class="mt-6 rounded-2xl bg-indigo-50 border border-indigo-100 p-5">
+                    <p class="text-sm font-semibold text-indigo-700">提醒規則</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        加入「感興趣」或「已購票」後，系統會自動在活動前一天中午 12:00 建立提醒。
+                    </p>
+                </div>
+            </div>
+        </aside>
 
-    <div class="reminder-box">
-        <h3>提醒設定</h3>
-
-        <?php if ($is_finished): ?>
-            <p class="notice">
-                此活動已舉行，不再建立提醒。
-            </p>
-        <?php elseif ($current_status): ?>
-            <p class="notice">
-                系統已自動設定提醒時間：<?= htmlspecialchars($auto_reminder_time) ?>。
-            </p>
-        <?php else: ?>
-            <p class="notice">
-                加入「感興趣」或「已購票」後，系統會自動在活動前一天中午 12:00 建立提醒。
-            </p>
-        <?php endif; ?>
-    </div>
+    </section>
 
 </main>
 
