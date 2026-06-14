@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Taipei');
 require_once '../backend/db.php';
 
 if (!isset($_SESSION["user_id"])) {
@@ -132,6 +133,7 @@ $sql = "
         a.activity_id,
         a.name AS activity_name,
         a.activity_time,
+        a.sales_time,
         a.location
     FROM REMINDER r
     JOIN SCHEDULE s
@@ -169,23 +171,39 @@ function getReminderText($reminder) {
         return $reminder["activity_name"] . " 已完成提醒";
     }
 
-    if (strtotime($reminder["reminder_time"]) <= time()) {
-        return $reminder["activity_name"] . " 提醒時間已到";
+    if ($reminder["display_status"] === "感興趣") {
+        if (strtotime($reminder["reminder_time"]) <= time()) {
+            return $reminder["activity_name"] . " 售票提醒時間已到";
+        }
+
+        return $reminder["activity_name"] . " 售票提醒";
     }
 
-    return $reminder["activity_name"] . " 將於 " . date("m/d H:i", strtotime($reminder["reminder_time"])) . " 提醒";
+    if ($reminder["display_status"] === "已購票") {
+        if (strtotime($reminder["reminder_time"]) <= time()) {
+            return $reminder["activity_name"] . " 活動提醒時間已到";
+        }
+
+        return $reminder["activity_name"] . " 活動提醒";
+    }
+
+    if ($reminder["display_status"] === "已舉行") {
+        return $reminder["activity_name"] . " 已舉行";
+    }
+
+    return $reminder["activity_name"] . " 提醒";
 }
 
-function getStatusBadgeClass($status) {
+function getScheduleStatusClass($status) {
     if ($status === "感興趣") {
-        return "bg-blue-50 text-blue-700";
+        return "text-blue-700 bg-blue-50";
     } else if ($status === "已購票") {
-        return "bg-red-50 text-red-700";
+        return "text-red-700 bg-red-50";
     } else if ($status === "已舉行") {
-        return "bg-slate-100 text-slate-500";
+        return "text-gray-600 bg-gray-100";
     }
 
-    return "bg-slate-100 text-slate-500";
+    return "text-slate-600 bg-slate-100";
 }
 ?>
 
@@ -193,70 +211,60 @@ function getStatusBadgeClass($status) {
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>使用者中心｜活動導購與行程紀錄系統</title>
+    <title>使用者資料</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Microsoft JhengHei', 'ui-sans-serif', 'system-ui']
-                    }
-                }
-            }
-        }
-    </script>
 </head>
 
 <body class="min-h-screen bg-slate-50 text-slate-900">
 
-<header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200">
+<header class="bg-white/90 backdrop-blur border-b border-slate-200 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <a href="activity_list.php" class="text-xl md:text-2xl font-bold tracking-tight">
+        <a href="activity_list.php" class="text-2xl font-bold">
             活動導購與行程紀錄系統
         </a>
 
-        <nav class="flex items-center gap-3">
-            <a href="activity_list.php" class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">首頁</a>
-            <a href="../backend/my_schedule.php" class="px-4 py-2 rounded-full text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 transition">行事曆</a>
-            <a href="profile.php" class="px-4 py-2 rounded-full bg-indigo-50 text-indigo-700 font-semibold">使用者</a>
+        <nav class="flex items-center gap-6 text-sm font-medium">
+            <a href="../backend/my_schedule.php" class="hover:text-blue-600">行事曆</a>
+            <a href="profile.php" class="text-blue-600">使用者</a>
         </nav>
     </div>
 </header>
 
 <main class="max-w-7xl mx-auto px-6 py-10">
-
-    <section class="grid lg:grid-cols-4 gap-8">
-
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <aside class="lg:col-span-1">
-            <div class="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-6">
-                <div class="flex flex-col items-center text-center">
-                    <div class="w-28 h-28 rounded-full bg-gradient-to-br from-indigo-200 to-blue-200 flex items-center justify-center text-5xl shadow-inner">
-                        👤
-                    </div>
-
-                    <h2 class="mt-5 text-2xl font-bold"><?= htmlspecialchars($user_info_name ?: $user_name) ?></h2>
-                    <p class="mt-1 text-sm text-slate-500 break-all"><?= htmlspecialchars($user_info_email) ?></p>
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+                <div class="w-28 h-28 rounded-full bg-gradient-to-br from-blue-100 to-slate-200 mx-auto mb-5 flex items-center justify-center">
+                    <span class="text-4xl">👤</span>
                 </div>
 
-                <nav class="mt-8 space-y-2">
+                <div class="text-center mb-6">
+                    <h2 class="text-xl font-bold">
+                        <?= htmlspecialchars($user_info_name ?: $user_name) ?>
+                    </h2>
+                    <p class="text-sm text-slate-500 break-all">
+                        <?= htmlspecialchars($user_info_email) ?>
+                    </p>
+                </div>
+
+                <nav class="space-y-2">
                     <a href="profile.php?tab=reminder"
-                       class="block rounded-2xl px-5 py-3 font-semibold transition <?= $tab === 'reminder' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-600 hover:bg-slate-100' ?>">
+                       class="block px-4 py-3 rounded-2xl font-semibold <?= $tab === 'reminder' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100' ?>">
                         提醒
                     </a>
 
                     <a href="profile.php?tab=info"
-                       class="block rounded-2xl px-5 py-3 font-semibold transition <?= $tab === 'info' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-600 hover:bg-slate-100' ?>">
+                       class="block px-4 py-3 rounded-2xl font-semibold <?= $tab === 'info' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100' ?>">
                         個人資料
                     </a>
 
                     <a href="profile.php?tab=password"
-                       class="block rounded-2xl px-5 py-3 font-semibold transition <?= $tab === 'password' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-600 hover:bg-slate-100' ?>">
+                       class="block px-4 py-3 rounded-2xl font-semibold <?= $tab === 'password' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100' ?>">
                         修改密碼
                     </a>
 
                     <a href="../backend/logout.php"
-                       class="block rounded-2xl px-5 py-3 font-semibold text-red-600 hover:bg-red-50 transition">
+                       class="block px-4 py-3 rounded-2xl font-semibold text-red-600 hover:bg-red-50">
                         登出
                     </a>
                 </nav>
@@ -264,159 +272,153 @@ function getStatusBadgeClass($status) {
         </aside>
 
         <section class="lg:col-span-3">
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 min-h-[520px]">
+                <?php if ($tab === "password"): ?>
 
-            <?php if ($tab === "password"): ?>
+                    <div class="max-w-md">
+                        <h1 class="text-3xl font-bold mb-6">修改密碼</h1>
 
-                <div class="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-8">
-                    <h1 class="text-3xl font-extrabold mb-2">修改密碼</h1>
-                    <p class="text-slate-500 mb-8">請輸入原密碼與新密碼。</p>
+                        <form action="../backend/update_password.php" method="post" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-600 mb-2">原密碼</label>
+                                <input type="password" name="old_password" required
+                                       class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
 
-                    <form class="max-w-xl space-y-5" action="../backend/update_password.php" method="post">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-600 mb-2">原密碼</label>
-                            <input type="password" name="old_password" required
-                                   class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100">
-                        </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-600 mb-2">新密碼</label>
+                                <input type="password" name="new_password" required
+                                       class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
 
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-600 mb-2">新密碼</label>
-                            <input type="password" name="new_password" required
-                                   class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100">
-                        </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-600 mb-2">確認新密碼</label>
+                                <input type="password" name="confirm_password" required
+                                       class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
 
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-600 mb-2">確認新密碼</label>
-                            <input type="password" name="confirm_password" required
-                                   class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100">
-                        </div>
-
-                        <button type="submit"
-                                class="rounded-2xl bg-indigo-600 text-white px-7 py-3 font-semibold hover:bg-indigo-700 transition">
-                            確認修改
-                        </button>
-                    </form>
-                </div>
-
-            <?php elseif ($tab === "info"): ?>
-
-                <div class="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-8">
-                    <h1 class="text-3xl font-extrabold mb-2">個人資料</h1>
-                    <p class="text-slate-500 mb-8">可修改使用者名稱，Email 僅供顯示。</p>
-
-                    <?php if (isset($_GET["updated"])): ?>
-                        <div class="mb-5 rounded-2xl bg-green-50 border border-green-100 px-4 py-3 text-green-700">
-                            個人資料已更新
-                        </div>
-                    <?php endif; ?>
-
-                    <?php if ($message !== ""): ?>
-                        <div class="mb-5 rounded-2xl bg-red-50 border border-red-100 px-4 py-3 text-red-700">
-                            <?= htmlspecialchars($message) ?>
-                        </div>
-                    <?php endif; ?>
-
-                    <form class="max-w-xl space-y-5" action="profile.php?tab=info" method="post">
-                        <input type="hidden" name="action" value="update_profile">
-
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-600 mb-2">使用者名稱</label>
-                            <input type="text" name="name" value="<?= htmlspecialchars($user_info_name) ?>" required
-                                   class="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:ring-4 focus:ring-indigo-100">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-600 mb-2">Email</label>
-                            <input type="email" value="<?= htmlspecialchars($user_info_email) ?>" readonly
-                                   class="w-full rounded-2xl border border-slate-200 bg-slate-100 text-slate-500 px-4 py-3 outline-none">
-                        </div>
-
-                        <button type="submit"
-                                class="rounded-2xl bg-indigo-600 text-white px-7 py-3 font-semibold hover:bg-indigo-700 transition">
-                            儲存修改
-                        </button>
-                    </form>
-                </div>
-
-            <?php else: ?>
-
-                <div class="flex items-end justify-between gap-6 mb-6">
-                    <div>
-                        <p class="text-indigo-600 font-semibold">Reminder</p>
-                        <h1 class="mt-2 text-4xl font-extrabold tracking-tight">提醒列表</h1>
-                        <p class="mt-3 text-slate-500">系統會自動建立活動前一天中午 12:00 的提醒。</p>
+                            <button type="submit"
+                                    class="px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700">
+                                確認修改
+                            </button>
+                        </form>
                     </div>
-                </div>
 
-                <?php if (count($reminders) === 0): ?>
+                <?php elseif ($tab === "info"): ?>
 
-                    <div class="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-12 text-center text-slate-500">
-                        目前沒有提醒。
+                    <div class="max-w-md">
+                        <h1 class="text-3xl font-bold mb-6">個人資料</h1>
+
+                        <form action="profile.php?tab=info" method="post" class="space-y-4">
+                            <input type="hidden" name="action" value="update_profile">
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-600 mb-2">使用者名稱</label>
+                                <input type="text" name="name" value="<?= htmlspecialchars($user_info_name) ?>" required
+                                       class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-600 mb-2">Email</label>
+                                <input type="email" value="<?= htmlspecialchars($user_info_email) ?>" readonly
+                                       class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-slate-100 text-slate-500">
+                            </div>
+
+                            <?php if (isset($_GET["updated"])): ?>
+                                <div class="text-green-600 font-semibold">
+                                    個人資料已更新。
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if ($message !== ""): ?>
+                                <div class="text-red-600 font-semibold">
+                                    <?= htmlspecialchars($message) ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <button type="submit"
+                                    class="px-6 py-3 rounded-2xl bg-blue-600 text-white font-bold hover:bg-blue-700">
+                                儲存修改
+                            </button>
+                        </form>
                     </div>
 
                 <?php else: ?>
 
-                    <div class="space-y-4">
-                        <?php foreach ($reminders as $reminder): ?>
-                            <?php
-                                $is_due = !$reminder["is_sent"] && strtotime($reminder["reminder_time"]) <= time();
-                                $status_class = getStatusBadgeClass($reminder["display_status"]);
-                            ?>
+                    <div class="flex items-end justify-between mb-6">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-2">Reminder</p>
+                            <h1 class="text-3xl font-bold">提醒列表</h1>
+                        </div>
+                    </div>
 
-                            <div class="relative rounded-[1.5rem] bg-white border border-slate-200 shadow-sm hover:shadow-lg transition p-6">
-                                <?php if ($is_due): ?>
-                                    <div class="absolute -right-2 -top-2 w-5 h-5 rounded-full bg-red-500 ring-4 ring-red-100"></div>
-                                <?php endif; ?>
+                    <?php if (count($reminders) === 0): ?>
 
-                                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
-                                    <div>
-                                        <a href="activity_detail.php?id=<?= htmlspecialchars($reminder["activity_id"]) ?>"
-                                           class="text-2xl font-bold hover:text-indigo-600 transition">
-                                            <?= htmlspecialchars(getReminderText($reminder)) ?>
-                                        </a>
+                        <div class="p-8 rounded-3xl bg-slate-50 text-slate-500">
+                            目前沒有提醒。加入「感興趣」或「已購票」後，系統會自動建立提醒。
+                        </div>
 
-                                        <div class="mt-4 flex flex-wrap gap-3 text-sm">
-                                            <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-600">
-                                                活動：<?= date("Y/m/d H:i", strtotime($reminder["activity_time"])) ?>
-                                            </span>
+                    <?php else: ?>
 
-                                            <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700">
-                                                提醒：<?= date("Y/m/d H:i", strtotime($reminder["reminder_time"])) ?>
-                                            </span>
+                        <div class="space-y-4">
+                            <?php foreach ($reminders as $reminder): ?>
+                                <?php
+                                    $is_due = !$reminder["is_sent"] && strtotime($reminder["reminder_time"]) <= time();
+                                    $status_class = getScheduleStatusClass($reminder["display_status"]);
+                                ?>
 
-                                            <span class="px-3 py-1 rounded-full <?= $status_class ?>">
-                                                <?= htmlspecialchars($reminder["display_status"]) ?>
-                                            </span>
-                                        </div>
+                                <div class="relative p-5 rounded-3xl border border-slate-200 bg-slate-50">
+                                    <?php if ($is_due): ?>
+                                        <div class="absolute -right-1 -top-1 w-5 h-5 rounded-full bg-red-500"></div>
+                                    <?php endif; ?>
 
-                                        <?php if (!empty($reminder["location"])): ?>
-                                            <p class="mt-4 text-slate-500">📍 <?= htmlspecialchars($reminder["location"]) ?></p>
+                                    <a href="activity_detail.php?id=<?= htmlspecialchars($reminder["activity_id"]) ?>"
+                                       class="text-xl font-bold hover:text-blue-600">
+                                        <?= htmlspecialchars(getReminderText($reminder)) ?>
+                                    </a>
+
+                                    <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-slate-600">
+                                        <p>活動時間：<?= date("Y/m/d H:i", strtotime($reminder["activity_time"])) ?></p>
+
+                                        <?php if (!empty($reminder["sales_time"])): ?>
+                                            <p>售票時間：<?= date("Y/m/d H:i", strtotime($reminder["sales_time"])) ?></p>
                                         <?php endif; ?>
+
+                                        <p>提醒時間：<?= date("Y/m/d H:i", strtotime($reminder["reminder_time"])) ?></p>
+                                        <p>活動地點：<?= htmlspecialchars($reminder["location"]) ?></p>
+                                    </div>
+
+                                    <div class="mt-4 flex items-center gap-3">
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold <?= $status_class ?>">
+                                            <?= htmlspecialchars($reminder["display_status"]) ?>
+                                        </span>
+
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold <?= $is_due ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600' ?>">
+                                            <?= $reminder["is_sent"] ? '已提醒' : ($is_due ? '提醒時間已到' : '尚未提醒') ?>
+                                        </span>
                                     </div>
 
                                     <?php if ($is_due): ?>
-                                        <form action="profile.php?tab=reminder" method="post">
+                                        <form action="profile.php?tab=reminder" method="post" class="mt-4">
                                             <input type="hidden" name="action" value="mark_sent">
                                             <input type="hidden" name="reminder_id" value="<?= htmlspecialchars($reminder["reminder_id"]) ?>">
 
                                             <button type="submit"
-                                                    class="rounded-2xl bg-slate-900 text-white px-5 py-3 font-semibold hover:bg-slate-700 transition">
+                                                    class="px-4 py-2 rounded-full bg-slate-900 text-white text-sm font-bold hover:bg-slate-700">
                                                 標記已提醒
                                             </button>
                                         </form>
                                     <?php endif; ?>
                                 </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                    <?php endif; ?>
 
                 <?php endif; ?>
-
-            <?php endif; ?>
-
+            </div>
         </section>
-
-    </section>
-
+    </div>
 </main>
 
 </body>
