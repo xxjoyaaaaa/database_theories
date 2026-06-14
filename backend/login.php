@@ -19,7 +19,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION["name"] = $user["name"];
         $_SESSION["role"] = $user["role"];
 
-        header("Location: ../activiy_list.php");
+        header("Location: ../pages/activiy_list.php");
         exit;
     } else {
         echo "Email 或密碼錯誤";
