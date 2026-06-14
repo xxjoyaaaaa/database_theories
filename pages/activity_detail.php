@@ -143,7 +143,7 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
 
         <div class="lg:col-span-2">
             <?php if (!empty($activity['image_url'])): ?>
-                <img src="<?= htmlspecialchars($activity['image_url']) ?>" 
+                <img src="/<?= htmlspecialchars($activity['image_url']) ?>" 
                  alt="<?= htmlspecialchars($activity['name']) ?>" 
                  class="w-full h-72 md:h-96 object-cover rounded-[2rem] shadow-sm border border-white">
             <?php else: ?>
