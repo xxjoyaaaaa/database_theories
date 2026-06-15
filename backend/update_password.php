@@ -57,38 +57,59 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 ?>
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <title>修改密碼</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
-<body>
 
-<h2>修改密碼</h2>
+<body class="min-h-screen bg-gray-100 flex items-center justify-center">
 
-<p><?php echo $message; ?></p>
+<div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
 
-<form method="POST">
+    <h2 class="text-2xl font-bold text-center mb-6">修改密碼</h2>
 
-    原密碼：
-    <input type="password" name="old_password" required>
-    <br><br>
+    <?php if (!empty($message)): ?>
+        <div class="mb-4 rounded-lg bg-red-100 text-red-700 px-4 py-2 text-center">
+            <?php echo $message; ?>
+        </div>
+    <?php endif; ?>
 
-    新密碼：
-    <input type="password" name="new_password" required>
-    <br><br>
+    <form method="POST" class="space-y-4">
 
-    確認新密碼：
-    <input type="password" name="confirm_password" required>
-    <br><br>
+        <div>
+            <label class="block mb-1 font-medium">原密碼</label>
+            <input type="password" name="old_password" required
+                   class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400">
+        </div>
 
-    <button type="submit">修改密碼</button>
+        <div>
+            <label class="block mb-1 font-medium">新密碼</label>
+            <input type="password" name="new_password" required
+                   class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400">
+        </div>
 
-</form>
+        <div>
+            <label class="block mb-1 font-medium">確認新密碼</label>
+            <input type="password" name="confirm_password" required
+                   class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-gray-400">
+        </div>
 
-<br>
+        <button type="submit"
+                class="w-full rounded-lg bg-gray-800 text-white py-2 hover:bg-gray-700">
+            修改密碼
+        </button>
 
-<a href="../pages/profile.php">返回使用者頁面</a>
+    </form>
+
+    <p class="text-center mt-4">
+        <a href="../pages/profile.php" class="text-gray-600 hover:underline">
+            返回使用者頁面
+        </a>
+    </p>
+
+</div>
 
 </body>
 </html>
