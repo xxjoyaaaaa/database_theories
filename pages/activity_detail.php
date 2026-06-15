@@ -235,12 +235,6 @@ if ($current_status === '感興趣') {
                     </div>
                 </div>
 
-                <div class="mt-8">
-                    <h2 class="text-xl font-bold mb-3">活動簡述</h2>
-                    <p class="text-slate-600 leading-8">
-                        目前資料庫暫無活動介紹欄位，這裡先顯示活動基本資訊。之後若資料表增加 description 欄位，可以在此呈現詳細的活動內容、注意事項與購票說明。
-                    </p>
-                </div>
             </div>
         </div>
 
