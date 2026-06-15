@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Taipei');
 require_once 'db.php';
 
 /*
@@ -81,7 +82,8 @@ try {
         SELECT
             s.schedule_id,
             s.status,
-            a.activity_time
+            a.activity_time,
+            a.sales_time
         FROM ACTIVITY a
         LEFT JOIN SCHEDULE s
             ON a.activity_id = s.activity_id
@@ -102,7 +104,7 @@ try {
         throw new Exception('SQL execute 失敗：' . $stmt->error);
     }
 
-    $stmt->bind_result($current_schedule_id, $current_status, $activity_time);
+    $stmt->bind_result($current_schedule_id, $current_status, $activity_time, $sales_time);
 
     if (!$stmt->fetch()) {
         throw new Exception('找不到此活動');
@@ -251,15 +253,26 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | 5. 自動設定提醒時間：活動前一天中午 12:00
+    | 5. 自動設定提醒時間
     |--------------------------------------------------------------------------
+    | 感興趣：售票時間前 12 小時提醒
+    | 已購票：活動前一天中午 12:00 提醒
     */
 
-    $activity_datetime = new DateTime($activity_time);
-    $activity_datetime->modify('-1 day');
-    $activity_datetime->setTime(12, 0, 0);
+    $reminder_time = null;
 
-    $reminder_time = $activity_datetime->format('Y-m-d H:i:s');
+    if ($status === '感興趣') {
+        if (!empty($sales_time)) {
+            $sales_datetime = new DateTime($sales_time);
+            $sales_datetime->modify('-12 hours');
+            $reminder_time = $sales_datetime->format('Y-m-d H:i:s');
+        }
+    } else if ($status === '已購票') {
+        $activity_datetime = new DateTime($activity_time);
+        $activity_datetime->modify('-1 day');
+        $activity_datetime->setTime(12, 0, 0);
+        $reminder_time = $activity_datetime->format('Y-m-d H:i:s');
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -290,41 +303,44 @@ try {
     |--------------------------------------------------------------------------
     | 7. 新增自動提醒
     |--------------------------------------------------------------------------
+    | 若活動沒有設定 sales_time，感興趣狀態就不建立售票提醒。
     */
 
-    $reminder_id = 'R' . date('YmdHis') . mt_rand(100, 999);
-    $notify_method = 'email';
+    if ($reminder_time !== null) {
+        $reminder_id = 'R' . date('YmdHis') . mt_rand(100, 999);
+        $notify_method = 'email';
 
-    $sql = "
-        INSERT INTO REMINDER (
-            reminder_id,
-            schedule_id,
-            reminder_time,
-            notify_method,
-            is_sent
-        )
-        VALUES (?, ?, ?, ?, FALSE)
-    ";
+        $sql = "
+            INSERT INTO REMINDER (
+                reminder_id,
+                schedule_id,
+                reminder_time,
+                notify_method,
+                is_sent
+            )
+            VALUES (?, ?, ?, ?, FALSE)
+        ";
 
-    $stmt = $db->prepare($sql);
+        $stmt = $db->prepare($sql);
 
-    if (!$stmt) {
-        throw new Exception('SQL prepare 失敗：' . $db->error);
+        if (!$stmt) {
+            throw new Exception('SQL prepare 失敗：' . $db->error);
+        }
+
+        $stmt->bind_param(
+            "ssss",
+            $reminder_id,
+            $real_schedule_id,
+            $reminder_time,
+            $notify_method
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception('SQL execute 失敗：' . $stmt->error);
+        }
+
+        $stmt->close();
     }
-
-    $stmt->bind_param(
-        "ssss",
-        $reminder_id,
-        $real_schedule_id,
-        $reminder_time,
-        $notify_method
-    );
-
-    if (!$stmt->execute()) {
-        throw new Exception('SQL execute 失敗：' . $stmt->error);
-    }
-
-    $stmt->close();
 
     $db->commit();
 

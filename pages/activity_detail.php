@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Taipei');
 require_once '../backend/db.php';
 
 if (isset($conn)) {
@@ -90,10 +91,26 @@ if ($display_status === "感興趣") {
     $status_badge_class = "bg-slate-100 text-slate-500";
 }
 
-$reminder_datetime = new DateTime($activity['activity_time']);
-$reminder_datetime->modify('-1 day');
-$reminder_datetime->setTime(12, 0, 0);
-$auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
+$auto_reminder_time = '';
+$reminder_rule_text = '';
+
+if ($current_status === '感興趣') {
+    if (!empty($activity['sales_time'])) {
+        $sales_reminder_datetime = new DateTime($activity['sales_time']);
+        $sales_reminder_datetime->modify('-12 hours');
+        $auto_reminder_time = $sales_reminder_datetime->format('Y/m/d H:i');
+        $reminder_rule_text = '售票時間前 12 小時提醒';
+    } else {
+        $auto_reminder_time = '此活動尚未設定售票時間';
+        $reminder_rule_text = '設定售票時間後才會建立售票提醒';
+    }
+} else if ($current_status === '已購票') {
+    $reminder_datetime = new DateTime($activity['activity_time']);
+    $reminder_datetime->modify('-1 day');
+    $reminder_datetime->setTime(12, 0, 0);
+    $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
+    $reminder_rule_text = '活動前一天中午 12:00 提醒';
+}
 ?>
 
 <!DOCTYPE html>
@@ -178,6 +195,17 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
                         <p class="mt-1 text-lg font-semibold"><?= date('Y/m/d H:i', strtotime($activity['activity_time'])) ?></p>
                     </div>
 
+                    <div class="rounded-2xl bg-green-50 border border-green-100 p-5">
+                        <p class="text-sm text-green-700">售票時間</p>
+                        <p class="mt-1 text-lg font-semibold text-green-800">
+                            <?php if (!empty($activity['sales_time'])): ?>
+                                <?= date('Y/m/d H:i', strtotime($activity['sales_time'])) ?>
+                            <?php else: ?>
+                                尚未公布
+                            <?php endif; ?>
+                        </p>
+                    </div>
+
                     <div class="rounded-2xl bg-slate-50 border border-slate-100 p-5">
                         <p class="text-sm text-slate-500">活動地點</p>
                         <p class="mt-1 text-lg font-semibold"><?= htmlspecialchars($activity['location']) ?></p>
@@ -197,6 +225,9 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
                                 活動已舉行，不再提醒
                             <?php elseif ($current_status): ?>
                                 <?= htmlspecialchars($auto_reminder_time) ?>
+                                <?php if ($reminder_rule_text !== ''): ?>
+                                    <span class="block mt-1 text-sm text-slate-500"><?= htmlspecialchars($reminder_rule_text) ?></span>
+                                <?php endif; ?>
                             <?php else: ?>
                                 加入行事曆後自動建立
                             <?php endif; ?>
@@ -268,7 +299,7 @@ $auto_reminder_time = $reminder_datetime->format('Y/m/d H:i');
                 <div class="mt-6 rounded-2xl bg-indigo-50 border border-indigo-100 p-5">
                     <p class="text-sm font-semibold text-indigo-700">提醒規則</p>
                     <p class="mt-2 text-sm leading-6 text-slate-600">
-                        加入「感興趣」或「已購票」後，系統會自動在活動前一天中午 12:00 建立提醒。
+                        加入「感興趣」後，系統會在售票時間前 12 小時提醒；改為「已購票」後，只保留活動日，並在活動前一天中午 12:00 提醒。
                     </p>
                 </div>
             </div>

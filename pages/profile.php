@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Taipei');
 require_once '../backend/db.php';
 
 if (!isset($_SESSION["user_id"])) {
@@ -124,6 +125,8 @@ $sql = "
         r.notify_method,
         r.is_sent,
 
+        s.status AS schedule_status,
+
         CASE
             WHEN a.activity_time < NOW() THEN '已舉行'
             ELSE s.status
@@ -132,6 +135,7 @@ $sql = "
         a.activity_id,
         a.name AS activity_name,
         a.activity_time,
+        a.sales_time,
         a.location
     FROM REMINDER r
     JOIN SCHEDULE s
@@ -169,11 +173,27 @@ function getReminderText($reminder) {
         return $reminder["activity_name"] . " 已完成提醒";
     }
 
-    if (strtotime($reminder["reminder_time"]) <= time()) {
-        return $reminder["activity_name"] . " 提醒時間已到";
+    if ($reminder["schedule_status"] === "感興趣") {
+        if (strtotime($reminder["reminder_time"]) <= time()) {
+            return $reminder["activity_name"] . " 售票提醒時間已到";
+        }
+
+        return $reminder["activity_name"] . " 售票提醒";
     }
 
-    return $reminder["activity_name"] . " 將於 " . date("m/d H:i", strtotime($reminder["reminder_time"])) . " 提醒";
+    if ($reminder["schedule_status"] === "已購票") {
+        if (strtotime($reminder["reminder_time"]) <= time()) {
+            return $reminder["activity_name"] . " 活動提醒時間已到";
+        }
+
+        return $reminder["activity_name"] . " 活動提醒";
+    }
+
+    if ($reminder["display_status"] === "已舉行") {
+        return $reminder["activity_name"] . " 已舉行";
+    }
+
+    return $reminder["activity_name"] . " 提醒";
 }
 
 function getStatusBadgeClass($status) {
@@ -343,7 +363,7 @@ function getStatusBadgeClass($status) {
                     <div>
                         <p class="text-indigo-600 font-semibold">Reminder</p>
                         <h1 class="mt-2 text-4xl font-extrabold tracking-tight">提醒列表</h1>
-                        <p class="mt-3 text-slate-500">系統會自動建立活動前一天中午 12:00 的提醒。</p>
+                        <p class="mt-3 text-slate-500">感興趣會建立售票時間前 12 小時提醒；已購票會建立活動前一天中午 12:00 的提醒。</p>
                     </div>
                 </div>
 
@@ -378,6 +398,12 @@ function getStatusBadgeClass($status) {
                                             <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-600">
                                                 活動：<?= date("Y/m/d H:i", strtotime($reminder["activity_time"])) ?>
                                             </span>
+
+                                            <?php if (!empty($reminder["sales_time"])): ?>
+                                                <span class="px-3 py-1 rounded-full bg-green-50 text-green-700">
+                                                    售票：<?= date("Y/m/d H:i", strtotime($reminder["sales_time"])) ?>
+                                                </span>
+                                            <?php endif; ?>
 
                                             <span class="px-3 py-1 rounded-full bg-indigo-50 text-indigo-700">
                                                 提醒：<?= date("Y/m/d H:i", strtotime($reminder["reminder_time"])) ?>

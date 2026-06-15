@@ -1,5 +1,6 @@
 <?php
 session_start();
+date_default_timezone_set('Asia/Taipei');
 require_once 'db.php';
 
 if (isset($conn)) {
@@ -56,16 +57,12 @@ if ($month == 12) {
 $sql = "
     SELECT
         s.schedule_id,
-
-        CASE
-            WHEN a.activity_time < NOW() THEN '已舉行'
-            ELSE s.status
-        END AS status,
+        s.status AS schedule_status,
 
         a.activity_id,
         a.name AS activity_name,
         a.activity_time,
-        DAY(a.activity_time) AS activity_day,
+        a.sales_time,
         a.location,
         a.cache_status,
 
@@ -76,8 +73,10 @@ $sql = "
     LEFT JOIN CATEGORY c
         ON a.category_id = c.category_id
     WHERE s.user_id = ?
-      AND a.activity_time >= ?
-      AND a.activity_time < ?
+      AND (
+            (a.activity_time >= ? AND a.activity_time < ?)
+         OR (a.sales_time IS NOT NULL AND a.sales_time >= ? AND a.sales_time < ?)
+      )
     ORDER BY a.activity_time ASC
 ";
 
@@ -87,7 +86,7 @@ if (!$stmt) {
     die('SQL prepare 失敗：' . $db->error);
 }
 
-$stmt->bind_param("sss", $user_id, $start_date, $end_date);
+$stmt->bind_param("sssss", $user_id, $start_date, $end_date, $start_date, $end_date);
 
 if (!$stmt->execute()) {
     die('SQL execute 失敗：' . $stmt->error);
@@ -96,24 +95,82 @@ if (!$stmt->execute()) {
 $result = $stmt->get_result();
 
 $events_by_day = [];
+$start_ts = strtotime($start_date);
+$end_ts = strtotime($end_date);
 
 while ($row = $result->fetch_assoc()) {
-    $day = intval($row['activity_day']);
+    /*
+    |--------------------------------------------------------------------------
+    | 活動日：感興趣與已購票都顯示，未過期紅色，已舉行灰色
+    |--------------------------------------------------------------------------
+    */
 
-    if (!isset($events_by_day[$day])) {
-        $events_by_day[$day] = [];
+    if (!empty($row['activity_time'])) {
+        $activity_ts = strtotime($row['activity_time']);
+
+        if ($activity_ts >= $start_ts && $activity_ts < $end_ts) {
+            $activity_day = intval(date('j', $activity_ts));
+
+            if (!isset($events_by_day[$activity_day])) {
+                $events_by_day[$activity_day] = [];
+            }
+
+            $activity_status = '活動日';
+
+            if ($activity_ts < time()) {
+                $activity_status = '已舉行';
+            }
+
+            $events_by_day[$activity_day][] = [
+                'activity_id' => $row['activity_id'],
+                'label' => $row['activity_name'],
+                'status' => $activity_status,
+                'type' => 'activity'
+            ];
+        }
     }
 
-    $events_by_day[$day][] = $row;
+    /*
+    |--------------------------------------------------------------------------
+    | 售票日：只有感興趣才顯示，未過期綠色，已過期灰色
+    |--------------------------------------------------------------------------
+    */
+
+    if ($row['schedule_status'] === '感興趣' && !empty($row['sales_time'])) {
+        $sales_ts = strtotime($row['sales_time']);
+
+        if ($sales_ts >= $start_ts && $sales_ts < $end_ts) {
+            $sales_day = intval(date('j', $sales_ts));
+
+            if (!isset($events_by_day[$sales_day])) {
+                $events_by_day[$sales_day] = [];
+            }
+
+            $sales_status = '售票日';
+
+            if ($sales_ts < time()) {
+                $sales_status = '售票日已過';
+            }
+
+            $events_by_day[$sales_day][] = [
+                'activity_id' => $row['activity_id'],
+                'label' => $row['activity_name'] . '售票日',
+                'status' => $sales_status,
+                'type' => 'sales'
+            ];
+        }
+    }
 }
 
 $stmt->close();
 
 function getStatusClass($status) {
-    if ($status === '感興趣') {
-        return 'bg-blue-50 text-blue-700 border-blue-100';
-    } else if ($status === '已購票') {
+    if ($status === '活動日') {
         return 'bg-red-50 text-red-700 border-red-100';
+    } else if ($status === '售票日') {
+        return 'bg-green-50 text-green-700 border-green-100';
+    } else if ($status === '售票日已過') {
+        return 'bg-slate-100 text-slate-500 border-slate-200';
     } else if ($status === '已舉行') {
         return 'bg-slate-100 text-slate-500 border-slate-200';
     }
@@ -163,7 +220,7 @@ function getStatusClass($status) {
         <div>
             <p class="text-indigo-600 font-semibold">My Schedule</p>
             <h1 class="mt-2 text-4xl font-extrabold tracking-tight">我的行事曆</h1>
-            <p class="mt-3 text-slate-500">查看你感興趣、已購票與已舉行的活動。</p>
+            <p class="mt-3 text-slate-500">查看你的活動日與售票日提醒；活動日為紅色，售票日為綠色。</p>
         </div>
 
         <div class="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
@@ -209,12 +266,12 @@ function getStatusClass($status) {
                         if (isset($events_by_day[$day])) {
                             foreach ($events_by_day[$day] as $event) {
                                 $activity_id = htmlspecialchars($event['activity_id']);
-                                $activity_name = htmlspecialchars($event['activity_name']);
+                                $label = htmlspecialchars($event['label']);
                                 $status = htmlspecialchars($event['status']);
                                 $class = getStatusClass($event['status']);
 
                                 echo "<a class='block rounded-xl border px-3 py-2 mb-2 text-sm font-semibold {$class} hover:shadow-sm transition' href='../pages/activity_detail.php?id={$activity_id}' title='{$status}'>";
-                                echo $activity_name;
+                                echo $label;
                                 echo "</a>";
                             }
                         }
@@ -235,9 +292,9 @@ function getStatusClass($status) {
     </section>
 
     <div class="mt-6 flex flex-wrap gap-3">
-        <span class="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 text-blue-700 font-semibold">感興趣</span>
-        <span class="inline-flex items-center px-4 py-2 rounded-full bg-red-50 text-red-700 font-semibold">已購票</span>
-        <span class="inline-flex items-center px-4 py-2 rounded-full bg-slate-100 text-slate-500 font-semibold">已舉行</span>
+        <span class="inline-flex items-center px-4 py-2 rounded-full bg-red-50 text-red-700 font-semibold">活動日</span>
+        <span class="inline-flex items-center px-4 py-2 rounded-full bg-green-50 text-green-700 font-semibold">活動售票日</span>
+        <span class="inline-flex items-center px-4 py-2 rounded-full bg-slate-100 text-slate-500 font-semibold">已舉行 / 售票時間已過</span>
     </div>
 
 </main>
