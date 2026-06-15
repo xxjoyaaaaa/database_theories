@@ -25,6 +25,56 @@ $message = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $action = $_POST["action"] ?? "";
 
+    if ($action === "change_password") {
+
+        $old_password = $_POST["old_password"] ?? "";
+        $new_password = $_POST["new_password"] ?? "";
+        $confirm_password = $_POST["confirm_password"] ?? "";
+
+        $sql = "SELECT password_hash FROM USERS WHERE user_id = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param("s", $user_id);
+        $stmt->execute();
+
+        $result = $stmt->get_result();
+        $user = $result->fetch_assoc();
+
+        if (!password_verify($old_password, $user["password_hash"])) {
+
+            $message = "原密碼錯誤";
+            $tab = "password";
+
+        } elseif ($new_password !== $confirm_password) {
+
+            $message = "兩次新密碼輸入不一致";
+            $tab = "password";
+
+        } else {
+
+            $new_hash = password_hash($new_password, PASSWORD_DEFAULT);
+
+            $update_sql = "
+                UPDATE USERS
+                SET password_hash = ?
+                WHERE user_id = ?
+            ";
+
+            $update_stmt = $db->prepare($update_sql);
+            $update_stmt->bind_param("ss", $new_hash, $user_id);
+
+            if ($update_stmt->execute()) {
+
+                header("Location: profile.php?tab=password&updated=1");
+                exit;
+
+            } else {
+
+                $message = "修改失敗";
+                $tab = "password";
+            }
+        }
+    }
+
     if ($action === "mark_sent") {
         $reminder_id = $_POST["reminder_id"] ?? "";
 
@@ -290,8 +340,22 @@ function getStatusBadgeClass($status) {
                 <div class="rounded-[2rem] bg-white border border-slate-200 shadow-sm p-8">
                     <h1 class="text-3xl font-extrabold mb-2">修改密碼</h1>
                     <p class="text-slate-500 mb-8">請輸入原密碼與新密碼。</p>
+                    <?php if (isset($_GET["updated"])): ?>
+                        <div class="mb-5 rounded-2xl bg-green-50 border border-green-100 px-4 py-3 text-green-700">
+                            密碼修改成功
+                        </div>
+                    <?php endif; ?>
+                    <?php if ($message !== ""): ?>
+                        <div class="mb-5 rounded-2xl px-4 py-3
+                            <?= ($message === "密碼修改成功")
+                                ? "bg-green-50 border border-green-100 text-green-700"
+                                : "bg-red-50 border border-red-100 text-red-700" ?>">
+                            <?= htmlspecialchars($message) ?>
+                        </div>
+                    <?php endif; ?>
 
-                    <form class="max-w-xl space-y-5" action="../backend/update_password.php" method="post">
+                    <form class="max-w-xl space-y-5" action="profile.php?tab=password" method="post">
+                        <input type="hidden" name="action" value="change_password">
                         <div>
                             <label class="block text-sm font-semibold text-slate-600 mb-2">原密碼</label>
                             <input type="password" name="old_password" required
